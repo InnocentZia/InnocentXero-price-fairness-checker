@@ -1,690 +1,783 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import './App.css'
 import {
-  Search,
-  MapPin,
-  DollarSign,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  Shield,
-  Globe,
-  Users,
-  BarChart3,
-  ChevronDown,
-  Wrench,
-  Wifi,
-  Plane,
-  Home,
-  GraduationCap,
-  Stethoscope,
-  ArrowRight,
-  CheckCircle,
-  AlertTriangle,
-  XCircle,
-  Info,
+  Search, DollarSign, Shield, Globe, Users,
+  BarChart3, ChevronDown, Wrench,
+  Stethoscope, ArrowRight, CheckCircle, AlertTriangle, XCircle, Info, Share2,
+  Flag, MessageSquare, Zap, Eye, HelpCircle, Monitor, Package, Cloud,
+  ShoppingBasket, Gamepad2, Trophy,
+  Scale, BookOpen, FileText, Home, X,
 } from 'lucide-react'
+import {
+  countries, products, productCategories, fairnessLenses,
+  calculateFairness, generateQuizQuestion, getLeaderboard,
+  priceToUSD,
+  type FairnessResult, type QuizQuestion,
+} from './data'
 
-interface PriceData {
-  service: string
-  category: string
-  location: string
-  avgPrice: number
-  minPrice: number
-  maxPrice: number
-  currency: string
-  reports: number
-  recentPrices: number[]
+function ScoreGauge({ score, size = 'md', label }: { score: number; size?: 'sm' | 'md' | 'lg'; label?: string }) {
+  const color = score >= 60 ? 'text-emerald-500' : score >= 40 ? 'text-amber-500' : 'text-red-500'
+  const dims = size === 'lg' ? 'w-28 h-28' : size === 'md' ? 'w-20 h-20' : 'w-14 h-14'
+  const textSize = size === 'lg' ? 'text-3xl' : size === 'md' ? 'text-xl' : 'text-sm'
+  const circumference = 2 * Math.PI * 40
+  const offset = circumference - (score / 100) * circumference
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div className={`${dims} relative`}>
+        <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+          <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" strokeWidth="8" />
+          <circle cx="50" cy="50" r="40" fill="none" stroke={score >= 60 ? '#10b981' : score >= 40 ? '#f59e0b' : '#ef4444'} strokeWidth="8" strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" className="transition-all duration-700" />
+        </svg>
+        <div className={`absolute inset-0 flex items-center justify-center ${textSize} font-bold ${color}`}>
+          {Math.round(score)}
+        </div>
+      </div>
+      {label && <span className="text-xs text-gray-500 text-center">{label}</span>}
+    </div>
+  )
 }
 
-const mockDatabase: PriceData[] = [
-  { service: 'Plumber - Pipe Repair', category: 'plumber', location: 'New York, USA', avgPrice: 275, minPrice: 150, maxPrice: 450, currency: '$', reports: 1247, recentPrices: [200, 300, 250, 275, 310, 180, 350] },
-  { service: 'Plumber - Pipe Repair', category: 'plumber', location: 'London, UK', avgPrice: 220, minPrice: 120, maxPrice: 380, currency: '£', reports: 892, recentPrices: [180, 250, 200, 220, 280, 160, 300] },
-  { service: 'Plumber - Pipe Repair', category: 'plumber', location: 'Sydney, Australia', avgPrice: 310, minPrice: 180, maxPrice: 500, currency: 'A$', reports: 634, recentPrices: [250, 350, 280, 310, 400, 200, 380] },
-  { service: 'Plumber - Pipe Repair', category: 'plumber', location: 'Toronto, Canada', avgPrice: 245, minPrice: 140, maxPrice: 400, currency: 'C$', reports: 756, recentPrices: [190, 280, 230, 245, 320, 170, 350] },
-  { service: 'Plumber - Drain Cleaning', category: 'plumber', location: 'New York, USA', avgPrice: 185, minPrice: 100, maxPrice: 320, currency: '$', reports: 983, recentPrices: [150, 200, 170, 185, 250, 120, 280] },
-  { service: 'Plumber - Drain Cleaning', category: 'plumber', location: 'London, UK', avgPrice: 150, minPrice: 80, maxPrice: 260, currency: '£', reports: 721, recentPrices: [120, 170, 140, 150, 210, 90, 230] },
-  { service: 'Plumber - Water Heater Install', category: 'plumber', location: 'New York, USA', avgPrice: 1200, minPrice: 800, maxPrice: 2000, currency: '$', reports: 542, recentPrices: [950, 1300, 1100, 1200, 1500, 850, 1800] },
-  { service: 'Internet Plan - 100 Mbps', category: 'internet', location: 'New York, USA', avgPrice: 65, minPrice: 40, maxPrice: 95, currency: '$', reports: 3421, recentPrices: [50, 70, 60, 65, 80, 45, 85] },
-  { service: 'Internet Plan - 100 Mbps', category: 'internet', location: 'London, UK', avgPrice: 35, minPrice: 22, maxPrice: 55, currency: '£', reports: 2890, recentPrices: [28, 38, 32, 35, 45, 25, 50] },
-  { service: 'Internet Plan - 100 Mbps', category: 'internet', location: 'Tokyo, Japan', avgPrice: 4500, minPrice: 3000, maxPrice: 6500, currency: '¥', reports: 1876, recentPrices: [3500, 5000, 4200, 4500, 5800, 3200, 6000] },
-  { service: 'Internet Plan - 500 Mbps', category: 'internet', location: 'New York, USA', avgPrice: 85, minPrice: 55, maxPrice: 130, currency: '$', reports: 2156, recentPrices: [65, 90, 80, 85, 110, 60, 120] },
-  { service: 'Internet Plan - 1 Gbps', category: 'internet', location: 'New York, USA', avgPrice: 110, minPrice: 70, maxPrice: 160, currency: '$', reports: 1543, recentPrices: [80, 120, 100, 110, 140, 75, 150] },
-  { service: 'Internet Plan - 100 Mbps', category: 'internet', location: 'Mumbai, India', avgPrice: 700, minPrice: 400, maxPrice: 1200, currency: '₹', reports: 4532, recentPrices: [500, 800, 650, 700, 1000, 450, 1100] },
-  { service: 'Flight - Economy Round Trip', category: 'flight', location: 'New York, USA', avgPrice: 450, minPrice: 220, maxPrice: 850, currency: '$', reports: 8932, recentPrices: [300, 500, 380, 450, 650, 250, 750] },
-  { service: 'Flight - Economy Round Trip', category: 'flight', location: 'London, UK', avgPrice: 380, minPrice: 180, maxPrice: 720, currency: '£', reports: 7654, recentPrices: [250, 420, 320, 380, 550, 200, 650] },
-  { service: 'Flight - Economy Round Trip', category: 'flight', location: 'Dubai, UAE', avgPrice: 1800, minPrice: 900, maxPrice: 3200, currency: 'AED', reports: 3421, recentPrices: [1200, 2000, 1600, 1800, 2600, 1000, 2900] },
-  { service: 'Flight - Business Class', category: 'flight', location: 'New York, USA', avgPrice: 2800, minPrice: 1500, maxPrice: 5500, currency: '$', reports: 2341, recentPrices: [2000, 3200, 2500, 2800, 4200, 1800, 4800] },
-  { service: '1-Bedroom Apartment Rent', category: 'rent', location: 'New York, USA', avgPrice: 3200, minPrice: 2000, maxPrice: 5000, currency: '$', reports: 12456, recentPrices: [2500, 3500, 2800, 3200, 4200, 2200, 4500] },
-  { service: '1-Bedroom Apartment Rent', category: 'rent', location: 'London, UK', avgPrice: 1800, minPrice: 1200, maxPrice: 3000, currency: '£', reports: 9876, recentPrices: [1400, 2000, 1600, 1800, 2400, 1300, 2700] },
-  { service: '1-Bedroom Apartment Rent', category: 'rent', location: 'Tokyo, Japan', avgPrice: 85000, minPrice: 55000, maxPrice: 150000, currency: '¥', reports: 7654, recentPrices: [65000, 95000, 78000, 85000, 120000, 60000, 135000] },
-  { service: '1-Bedroom Apartment Rent', category: 'rent', location: 'Berlin, Germany', avgPrice: 950, minPrice: 600, maxPrice: 1500, currency: '€', reports: 6543, recentPrices: [750, 1050, 880, 950, 1250, 650, 1400] },
-  { service: '2-Bedroom Apartment Rent', category: 'rent', location: 'New York, USA', avgPrice: 4500, minPrice: 3000, maxPrice: 7500, currency: '$', reports: 8765, recentPrices: [3500, 5000, 4000, 4500, 6000, 3200, 6800] },
-  { service: 'University Tuition (Annual)', category: 'tuition', location: 'New York, USA', avgPrice: 45000, minPrice: 20000, maxPrice: 75000, currency: '$', reports: 5432, recentPrices: [30000, 50000, 40000, 45000, 60000, 25000, 70000] },
-  { service: 'University Tuition (Annual)', category: 'tuition', location: 'London, UK', avgPrice: 15000, minPrice: 9000, maxPrice: 30000, currency: '£', reports: 4321, recentPrices: [11000, 17000, 13500, 15000, 22000, 10000, 27000] },
-  { service: 'University Tuition (Annual)', category: 'tuition', location: 'Berlin, Germany', avgPrice: 500, minPrice: 0, maxPrice: 3000, currency: '€', reports: 3210, recentPrices: [100, 600, 350, 500, 1500, 0, 2500] },
-  { service: 'University Tuition (Annual)', category: 'tuition', location: 'Sydney, Australia', avgPrice: 35000, minPrice: 18000, maxPrice: 55000, currency: 'A$', reports: 2876, recentPrices: [22000, 40000, 30000, 35000, 48000, 20000, 52000] },
-  { service: 'Community College (Annual)', category: 'tuition', location: 'New York, USA', avgPrice: 5500, minPrice: 2500, maxPrice: 12000, currency: '$', reports: 3456, recentPrices: [3500, 6500, 5000, 5500, 8500, 3000, 10000] },
-  { service: 'MRI Scan', category: 'medical', location: 'New York, USA', avgPrice: 2600, minPrice: 400, maxPrice: 7000, currency: '$', reports: 6789, recentPrices: [1200, 3200, 2000, 2600, 5000, 600, 6500] },
-  { service: 'MRI Scan', category: 'medical', location: 'London, UK', avgPrice: 500, minPrice: 200, maxPrice: 900, currency: '£', reports: 4567, recentPrices: [300, 600, 400, 500, 750, 250, 850] },
-  { service: 'MRI Scan', category: 'medical', location: 'Mumbai, India', avgPrice: 8000, minPrice: 3000, maxPrice: 15000, currency: '₹', reports: 5678, recentPrices: [5000, 10000, 7000, 8000, 12000, 4000, 14000] },
-  { service: 'Dental Cleaning', category: 'medical', location: 'New York, USA', avgPrice: 200, minPrice: 75, maxPrice: 400, currency: '$', reports: 8901, recentPrices: [120, 250, 170, 200, 320, 90, 380] },
-  { service: 'Dental Cleaning', category: 'medical', location: 'London, UK', avgPrice: 80, minPrice: 40, maxPrice: 150, currency: '£', reports: 6789, recentPrices: [55, 95, 70, 80, 120, 45, 140] },
-  { service: 'Hip Replacement Surgery', category: 'medical', location: 'New York, USA', avgPrice: 40000, minPrice: 25000, maxPrice: 70000, currency: '$', reports: 1234, recentPrices: [30000, 45000, 35000, 40000, 55000, 28000, 65000] },
-  { service: 'Hip Replacement Surgery', category: 'medical', location: 'London, UK', avgPrice: 12000, minPrice: 8000, maxPrice: 20000, currency: '£', reports: 987, recentPrices: [9000, 14000, 11000, 12000, 17000, 8500, 19000] },
-]
-
-const categories = [
-  { id: 'plumber', label: 'Plumbing', icon: Wrench, color: 'from-blue-500 to-blue-600' },
-  { id: 'internet', label: 'Internet Plans', icon: Wifi, color: 'from-purple-500 to-purple-600' },
-  { id: 'flight', label: 'Flights', icon: Plane, color: 'from-sky-500 to-sky-600' },
-  { id: 'rent', label: 'Rent', icon: Home, color: 'from-emerald-500 to-emerald-600' },
-  { id: 'tuition', label: 'Tuition', icon: GraduationCap, color: 'from-amber-500 to-amber-600' },
-  { id: 'medical', label: 'Medical', icon: Stethoscope, color: 'from-rose-500 to-rose-600' },
-]
-
-const useCases = [
-  {
-    icon: Wrench,
-    title: 'Plumbers & Home Services',
-    description: 'Know if that $500 pipe repair quote is fair before you sign.',
-    image: '/images/plumber.jpg',
-    fallback: 'https://placehold.co/600x400/png',
-  },
-  {
-    icon: Wifi,
-    title: 'Internet Plans',
-    description: 'Compare ISP pricing across cities. Stop overpaying for bandwidth.',
-    image: '/images/internet.jpg',
-    fallback: 'https://placehold.co/600x400/png',
-  },
-  {
-    icon: Plane,
-    title: 'Flights',
-    description: 'Check if that flight deal is actually a deal or just marketing.',
-    image: '/images/flight.jpg',
-    fallback: 'https://placehold.co/600x400/png',
-  },
-  {
-    icon: Home,
-    title: 'Rent',
-    description: 'See what others actually pay for similar apartments in your area.',
-    image: '/images/rent.jpg',
-    fallback: 'https://placehold.co/600x400/png',
-  },
-  {
-    icon: GraduationCap,
-    title: 'Tuition',
-    description: 'Compare university costs globally. Education pricing varies wildly.',
-    image: '/images/tuition.jpg',
-    fallback: 'https://placehold.co/600x400/png',
-  },
-  {
-    icon: Stethoscope,
-    title: 'Medical Procedures',
-    description: 'An MRI can cost $400 or $7,000. Know the fair price before your appointment.',
-    image: '/images/medical.jpg',
-    fallback: 'https://placehold.co/600x400/png',
-  },
-]
-
-function getVerdict(price: number, data: PriceData): { label: string; color: string; bgColor: string; icon: typeof TrendingUp; detail: string } {
-  const range = data.maxPrice - data.minPrice
-  const lowerThreshold = data.avgPrice - range * 0.15
-  const upperThreshold = data.avgPrice + range * 0.15
-
-  if (price < lowerThreshold) {
-    return {
-      label: 'Underpriced',
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-50 border-emerald-200',
-      icon: TrendingDown,
-      detail: `This is below the typical range. Great deal — or double-check the quality.`,
-    }
-  } else if (price > upperThreshold) {
-    return {
-      label: 'Overpriced',
-      color: 'text-red-600',
-      bgColor: 'bg-red-50 border-red-200',
-      icon: TrendingUp,
-      detail: `You're being charged above the normal range. Consider negotiating or shopping around.`,
-    }
-  } else {
-    return {
-      label: 'Fair Price',
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50 border-blue-200',
-      icon: Minus,
-      detail: `This price falls within the normal range for this service in this location.`,
-    }
-  }
+function FairnessBar({ score, label, description, active }: { score: number; label: string; description: string; active: boolean }) {
+  const color = score >= 60 ? 'bg-emerald-500' : score >= 40 ? 'bg-amber-500' : 'bg-red-500'
+  const textColor = score >= 60 ? 'text-emerald-700' : score >= 40 ? 'text-amber-700' : 'text-red-700'
+  const verdict = score >= 60 ? 'Good value' : score >= 40 ? 'Market rate' : 'Overpriced'
+  return (
+    <div className={`p-4 rounded-xl border transition-all ${active ? 'border-indigo-300 bg-indigo-50/50 shadow-sm' : 'border-gray-200 bg-white'}`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-semibold text-gray-900">{label}</span>
+        <span className={`text-xs font-semibold ${textColor} px-2 py-0.5 rounded-full ${score >= 60 ? 'bg-emerald-100' : score >= 40 ? 'bg-amber-100' : 'bg-red-100'}`}>{verdict}</span>
+      </div>
+      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden mb-2">
+        <div className={`h-full ${color} rounded-full transition-all duration-700`} style={{ width: `${score}%` }} />
+      </div>
+      <p className="text-xs text-gray-500">{description}</p>
+    </div>
+  )
 }
 
-function getPercentile(price: number, data: PriceData): number {
-  const sorted = [...data.recentPrices].sort((a, b) => a - b)
-  const below = sorted.filter((p) => p <= price).length
-  return Math.round((below / sorted.length) * 100)
-}
-
-function formatPrice(price: number, currency: string): string {
-  return `${currency}${price.toLocaleString()}`
-}
-
-function ImageWithFallback({ src, fallback, alt, className }: { src: string; fallback: string; alt: string; className?: string }) {
-  const [error, setError] = useState(false)
-  return <img src={error ? fallback : src} alt={alt} className={className} onError={() => setError(true)} />
-}
+type TabId = 'home' | 'checker' | 'compare' | 'quiz' | 'leaderboard' | 'community' | 'methodology'
 
 function App() {
-  const [service, setService] = useState('')
-  const [location, setLocation] = useState('')
-  const [price, setPrice] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('')
-  const [results, setResults] = useState<PriceData | null>(null)
-  const [showResults, setShowResults] = useState(false)
-  const [searchError, setSearchError] = useState('')
+  const [activeTab, setActiveTab] = useState<TabId>('home')
+  const [selectedProduct, setSelectedProduct] = useState('')
+  const [selectedCountry, setSelectedCountry] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [activeLens, setActiveLens] = useState('ppp')
+  const [fairnessResult, setFairnessResult] = useState<FairnessResult | null>(null)
+  const [showMethodology, setShowMethodology] = useState(false)
+  const [quizQuestion, setQuizQuestion] = useState<QuizQuestion | null>(null)
+  const [quizAnswer, setQuizAnswer] = useState<'A' | 'B' | null>(null)
+  const [quizScore, setQuizScore] = useState(0)
+  const [quizTotal, setQuizTotal] = useState(0)
+  const [compareProduct, setCompareProduct] = useState('')
+  const [communityName, setCommunityName] = useState('')
+  const [communityPrice, setCommunityPrice] = useState('')
+  const [communityNotes, setCommunityNotes] = useState('')
+  const [communitySubmitted, setCommunitySubmitted] = useState(false)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const resultsRef = useRef<HTMLDivElement>(null)
 
-  const uniqueServices = [...new Set(mockDatabase.filter((d) => !selectedCategory || d.category === selectedCategory).map((d) => d.service))]
-  const uniqueLocations = [...new Set(mockDatabase.filter((d) => !service || d.service === service).map((d) => d.location))]
+  const filteredProducts = categoryFilter === 'all' ? products : products.filter(p => p.category === categoryFilter)
+  const selectedProductData = products.find(p => p.id === selectedProduct)
+  const selectedCountryData = countries.find(c => c.code === selectedCountry)
 
-  const handleSearch = () => {
-    setSearchError('')
-    setShowResults(false)
+  const handleCheck = () => {
+    if (!selectedProduct || !selectedCountry) return
+    const product = products.find(p => p.id === selectedProduct)
+    if (!product) return
+    const result = calculateFairness(product, selectedCountry)
+    setFairnessResult(result)
+    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+  }
 
-    if (!service || !location || !price) {
-      setSearchError('Please fill in all fields to check your price.')
-      return
-    }
+  const startQuiz = () => {
+    setQuizQuestion(generateQuizQuestion())
+    setQuizAnswer(null)
+  }
 
-    const match = mockDatabase.find(
-      (d) => d.service === service && d.location === location
-    )
+  const answerQuiz = (answer: 'A' | 'B') => {
+    if (!quizQuestion || quizAnswer) return
+    setQuizAnswer(answer)
+    setQuizTotal(t => t + 1)
+    if (answer === quizQuestion.answer) setQuizScore(s => s + 1)
+  }
 
-    if (match) {
-      setResults(match)
-      setShowResults(true)
-      setTimeout(() => {
-        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 100)
-    } else {
-      setSearchError('No data found for this combination. Try a different service or location.')
+  useEffect(() => {
+    if (activeTab === 'quiz' && !quizQuestion) startQuiz()
+  }, [activeTab])
+
+  const leaderboard = activeTab === 'leaderboard' ? getLeaderboard() : []
+
+  const getScoreForLens = (result: FairnessResult, lensId: string) => {
+    switch (lensId) {
+      case 'raw': return result.rawScore
+      case 'ppp': return result.pppScore
+      case 'income': return result.incomeScore
+      case 'col': return result.colScore
+      default: return result.pppScore
     }
   }
 
-  const priceNum = parseFloat(price) || 0
-  const verdict = results ? getVerdict(priceNum, results) : null
-  const percentile = results ? getPercentile(priceNum, results) : 0
+  const formatUSD = (n: number) => `$${n < 1 ? n.toFixed(2) : n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+
+  const tabs: { id: TabId; label: string; icon: typeof Globe }[] = [
+    { id: 'home', label: 'Home', icon: Home },
+    { id: 'checker', label: 'Price Checker', icon: Search },
+    { id: 'compare', label: 'Global Compare', icon: Globe },
+    { id: 'quiz', label: 'Quiz', icon: Gamepad2 },
+    { id: 'leaderboard', label: 'Leaderboard', icon: Trophy },
+    { id: 'community', label: 'Community', icon: Users },
+    { id: 'methodology', label: 'How We Score', icon: BookOpen },
+  ]
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200">
+      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
+            <button onClick={() => setActiveTab('home')} className="flex items-center gap-2">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
                 <Shield className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                FairPrice
-              </span>
+              <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">FairPrice</span>
+            </button>
+            <div className="hidden md:flex items-center gap-1">
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => { setActiveTab(tab.id); setMobileMenuOpen(false) }}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
-            <div className="hidden md:flex items-center gap-8">
-              <a href="#how-it-works" className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">
-                How it Works
-              </a>
-              <a href="#use-cases" className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">
-                Use Cases
-              </a>
-              <a href="#checker" className="px-5 py-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-indigo-500/25 transition-all">
-                Check Price
-              </a>
-            </div>
+            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 rounded-lg hover:bg-gray-100">
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <BarChart3 className="w-5 h-5" />}
+            </button>
           </div>
         </div>
-      </nav>
-
-      <section className="relative pt-32 pb-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-purple-50" />
-        <div className="absolute top-20 left-10 w-72 h-72 bg-indigo-200/30 rounded-full blur-3xl" />
-        <div className="absolute bottom-10 right-10 w-96 h-96 bg-purple-200/30 rounded-full blur-3xl" />
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-4xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-100 text-indigo-700 text-sm font-medium mb-8">
-              <Globe className="w-4 h-4" />
-              Trusted by users in 50+ countries
-            </div>
-
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-gray-900 tracking-tight leading-tight">
-              Are you being{' '}
-              <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
-                ripped off?
-              </span>
-            </h1>
-
-            <p className="mt-6 text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-              Enter any service, your city, and the price you were quoted. We'll tell you if it's fair — backed by real data from thousands of people worldwide.
-            </p>
-
-            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a
-                href="#checker"
-                className="px-8 py-4 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold text-lg hover:shadow-xl hover:shadow-indigo-500/25 transition-all flex items-center gap-2"
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-gray-200 bg-white p-2">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => { setActiveTab(tab.id); setMobileMenuOpen(false) }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium ${activeTab === tab.id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600'}`}
               >
-                Check Your Price
-                <ArrowRight className="w-5 h-5" />
-              </a>
-              <a
-                href="#how-it-works"
-                className="px-8 py-4 rounded-full border-2 border-gray-300 text-gray-700 font-semibold text-lg hover:border-indigo-400 hover:text-indigo-600 transition-all"
-              >
-                How it Works
-              </a>
-            </div>
-
-            <div className="mt-16 grid grid-cols-3 gap-8 max-w-lg mx-auto">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-gray-900">2.4M+</div>
-                <div className="text-sm text-gray-500 mt-1">Price Reports</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-gray-900">185+</div>
-                <div className="text-sm text-gray-500 mt-1">Cities Covered</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-gray-900">98%</div>
-                <div className="text-sm text-gray-500 mt-1">Accuracy Rate</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="how-it-works" className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
-              How it works
-            </h2>
-            <p className="mt-4 text-lg text-gray-600">Three simple steps to price transparency</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                step: '01',
-                icon: Search,
-                title: 'Enter your details',
-                description: 'Tell us the service or product, your city or country, and the price you were quoted.',
-              },
-              {
-                step: '02',
-                icon: BarChart3,
-                title: 'We crunch the data',
-                description: 'We compare your price against thousands of real reports from people in your area.',
-              },
-              {
-                step: '03',
-                icon: CheckCircle,
-                title: 'Get your verdict',
-                description: 'See if your price is fair, overpriced, or underpriced — with the full breakdown.',
-              },
-            ].map((item) => (
-              <div
-                key={item.step}
-                className="relative p-8 rounded-2xl bg-gray-50 border border-gray-100 hover:border-indigo-200 hover:shadow-lg transition-all group"
-              >
-                <div className="text-6xl font-black text-gray-100 absolute top-4 right-6 group-hover:text-indigo-100 transition-colors">
-                  {item.step}
-                </div>
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-6">
-                  <item.icon className="w-7 h-7 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{item.title}</h3>
-                <p className="text-gray-600 leading-relaxed">{item.description}</p>
-              </div>
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+              </button>
             ))}
           </div>
-        </div>
-      </section>
+        )}
+      </nav>
 
-      <section id="checker" className="py-24 bg-gradient-to-b from-gray-50 to-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
-              Check your price
-            </h2>
-            <p className="mt-4 text-lg text-gray-600">Fill in the details below to see if you're getting a fair deal</p>
-          </div>
-
-          <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 p-8 sm:p-10">
-            <div className="mb-8">
-              <label className="block text-sm font-semibold text-gray-700 mb-3">Category</label>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-                {categories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() => {
-                      setSelectedCategory(cat.id === selectedCategory ? '' : cat.id)
-                      setService('')
-                      setLocation('')
-                      setShowResults(false)
-                    }}
-                    className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${
-                      selectedCategory === cat.id
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                    }`}
-                  >
-                    <cat.icon className="w-5 h-5" />
-                    <span className="text-xs font-medium">{cat.label}</span>
-                  </button>
+      {activeTab === 'home' && (
+        <>
+          <section className="relative overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-purple-50 py-20 sm:py-32">
+            <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-100/50 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-100/50 rounded-full blur-3xl" />
+            <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-100 text-indigo-700 text-sm font-medium mb-8">
+                <Globe className="w-4 h-4" />
+                20 countries &middot; 20+ products &middot; Multiple fairness lenses
+              </div>
+              <h1 className="text-4xl sm:text-6xl font-extrabold text-gray-900 leading-tight">
+                Is this price fair<br />
+                <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">in your country?</span>
+              </h1>
+              <p className="mt-6 text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
+                Same product. Wildly different prices. We show you if you are paying a fair price &mdash; adjusted for income, purchasing power, taxes, and cost of living.
+              </p>
+              <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+                <button onClick={() => setActiveTab('checker')} className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-lg hover:shadow-xl transition-all">
+                  Check a Price <ArrowRight className="w-5 h-5" />
+                </button>
+                <button onClick={() => setActiveTab('quiz')} className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-white border-2 border-gray-200 text-gray-700 font-bold text-lg hover:border-indigo-300 hover:shadow-lg transition-all">
+                  <Gamepad2 className="w-5 h-5" />
+                  Guess the Price
+                </button>
+              </div>
+              <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-3xl mx-auto">
+                {[
+                  { stat: '20', label: 'Countries' },
+                  { stat: '20+', label: 'Products & Services' },
+                  { stat: '4', label: 'Fairness Lenses' },
+                  { stat: '100%', label: 'Transparent Scoring' },
+                ].map(item => (
+                  <div key={item.label} className="text-center">
+                    <div className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{item.stat}</div>
+                    <div className="text-sm text-gray-500 mt-1">{item.label}</div>
+                  </div>
                 ))}
               </div>
             </div>
+          </section>
 
-            <div className="grid sm:grid-cols-2 gap-6 mb-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  <Search className="w-4 h-4 inline mr-1" />
-                  Service or Product
-                </label>
-                <div className="relative">
-                  <select
-                    value={service}
-                    onChange={(e) => {
-                      setService(e.target.value)
-                      setShowResults(false)
-                    }}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-indigo-500 focus:ring-0 outline-none transition-colors appearance-none bg-white text-gray-900"
-                  >
-                    <option value="">Select a service...</option>
-                    {uniqueServices.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-                </div>
+          <section className="py-20 bg-white">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="text-center mb-14">
+                <h2 className="text-3xl font-bold text-gray-900">Not just numbers &mdash; context</h2>
+                <p className="mt-3 text-gray-600 max-w-xl mx-auto">We don't just compare raw prices. We show you why prices differ and what "fair" actually means.</p>
               </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  <MapPin className="w-4 h-4 inline mr-1" />
-                  City / Country
-                </label>
-                <div className="relative">
-                  <select
-                    value={location}
-                    onChange={(e) => {
-                      setLocation(e.target.value)
-                      setShowResults(false)
-                    }}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-indigo-500 focus:ring-0 outline-none transition-colors appearance-none bg-white text-gray-900"
-                  >
-                    <option value="">Select a location...</option>
-                    {uniqueLocations.map((l) => (
-                      <option key={l} value={l}>{l}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-                </div>
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[
+                  { icon: Scale, title: 'Multiple Fairness Lenses', desc: 'Compare by PPP, income, cost of living, or raw price. No single metric tells the full story.' },
+                  { icon: Eye, title: 'Transparent Scoring', desc: 'Click any score to see exactly how it was calculated. No black boxes.' },
+                  { icon: FileText, title: 'Context, Not Accusations', desc: 'We explain taxes, import duties, and local factors that cause price differences.' },
+                  { icon: Users, title: 'Community Verified', desc: 'Crowdsourced data from real users. Flag outdated prices and add local notes.' },
+                ].map(item => (
+                  <div key={item.title} className="p-6 rounded-2xl border border-gray-200 hover:border-indigo-200 hover:shadow-lg transition-all">
+                    <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center mb-4">
+                      <item.icon className="w-6 h-6 text-indigo-600" />
+                    </div>
+                    <h3 className="font-bold text-gray-900 mb-2">{item.title}</h3>
+                    <p className="text-sm text-gray-600">{item.desc}</p>
+                  </div>
+                ))}
               </div>
             </div>
+          </section>
 
-            <div className="mb-8">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                <DollarSign className="w-4 h-4 inline mr-1" />
-                Price Quoted
-              </label>
-              <input
-                type="number"
-                value={price}
-                onChange={(e) => {
-                  setPrice(e.target.value)
-                  setShowResults(false)
-                }}
-                placeholder="Enter the price you were quoted"
-                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-indigo-500 focus:ring-0 outline-none transition-colors text-gray-900"
-              />
+          <section className="py-20 bg-gray-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="text-center mb-14">
+                <h2 className="text-3xl font-bold text-gray-900">Different rules for different categories</h2>
+                <p className="mt-3 text-gray-600">We evaluate fairness differently based on what you are buying</p>
+              </div>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[
+                  { icon: Monitor, cat: 'Digital Goods', desc: 'Games, streaming, software. Regional pricing should reflect local purchasing power.', example: 'Netflix: $15.49 in US vs regional pricing in India' },
+                  { icon: Package, cat: 'Physical Goods', desc: 'Import duties, shipping, and distribution costs legitimately raise prices.', example: 'iPhone 15: $799 in US, much higher in Brazil' },
+                  { icon: Cloud, cat: 'SaaS / B2B Tools', desc: 'Cloud services have near-zero marginal cost. Regional pricing is a choice.', example: 'Slack: $12.50/user in US, lower in India' },
+                  { icon: ShoppingBasket, cat: 'Essentials', desc: 'Food, fuel, utilities. Prices reflect local production and subsidies.', example: 'Gasoline: $0.95/L in US, subsidized in Egypt' },
+                  { icon: Wrench, cat: 'Services', desc: 'Plumbers, internet, rent. Tied to local wages and regulations.', example: 'Plumber: $85/hr in US, much less in India' },
+                  { icon: Stethoscope, cat: 'Medical', desc: 'Massive variation. Insurance systems, regulations, and market forces all play a role.', example: 'MRI: $2,600 in US, under $500 in UK' },
+                ].map(item => (
+                  <div key={item.cat} className="bg-white p-6 rounded-2xl border border-gray-200 hover:shadow-lg transition-all">
+                    <item.icon className="w-8 h-8 text-indigo-600 mb-3" />
+                    <h3 className="font-bold text-gray-900 mb-2">{item.cat}</h3>
+                    <p className="text-sm text-gray-600 mb-3">{item.desc}</p>
+                    <div className="text-xs text-indigo-600 bg-indigo-50 rounded-lg px-3 py-2 font-medium">{item.example}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="py-20 bg-white">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="text-center mb-14">
+                <h2 className="text-3xl font-bold text-gray-900">Why price transparency matters</h2>
+              </div>
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[
+                  { stat: '$4,200', desc: 'Average annual savings when consumers know fair prices' },
+                  { stat: '73%', desc: 'Of people have paid above market rate without knowing' },
+                  { stat: '10x', desc: 'Price variation for the same medical procedure in the US' },
+                  { stat: '0', desc: 'Industries that want you to have this information' },
+                ].map(item => (
+                  <div key={item.stat} className="p-8 rounded-2xl bg-gradient-to-br from-gray-50 to-white border border-gray-200 text-center">
+                    <div className="text-4xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-3">{item.stat}</div>
+                    <p className="text-sm text-gray-600">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="py-20 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl" />
+            <div className="relative max-w-4xl mx-auto px-4 text-center">
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">Stop overpaying. Start understanding.</h2>
+              <p className="text-xl text-white/80 mb-10 max-w-2xl mx-auto">We don't accuse. We inform. Understand the real reasons behind price differences worldwide.</p>
+              <button onClick={() => setActiveTab('checker')} className="inline-flex items-center gap-2 px-10 py-4 rounded-full bg-white text-indigo-600 font-bold text-lg hover:shadow-2xl transition-all">
+                Check a Price Now <ArrowRight className="w-5 h-5" />
+              </button>
+            </div>
+          </section>
+        </>
+      )}
+
+      {activeTab === 'checker' && (
+        <section className="py-12 sm:py-20">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold text-gray-900">Check your price</h2>
+              <p className="mt-2 text-gray-600">Select a product and country to see a multi-lens fairness analysis</p>
             </div>
 
-            {searchError && (
-              <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-amber-700">{searchError}</p>
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 shadow-sm">
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Category</label>
+                <div className="flex flex-wrap gap-2">
+                  {productCategories.map(cat => (
+                    <button
+                      key={cat.id}
+                      onClick={() => { setCategoryFilter(cat.id); setSelectedProduct('') }}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${categoryFilter === cat.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Product / Service</label>
+                  <div className="relative">
+                    <select value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 appearance-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                      <option value="">Select a product...</option>
+                      {filteredProducts.map(p => (<option key={p.id} value={p.id}>{p.name} &mdash; {p.categoryLabel}</option>))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Country</label>
+                  <div className="relative">
+                    <select value={selectedCountry} onChange={e => setSelectedCountry(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 appearance-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                      <option value="">Select a country...</option>
+                      {countries.filter(c => !selectedProduct || products.find(p => p.id === selectedProduct)?.prices[c.code]).map(c => (<option key={c.code} value={c.code}>{c.flag} {c.name}</option>))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+              <button onClick={handleCheck} disabled={!selectedProduct || !selectedCountry} className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-lg flex items-center justify-center gap-2 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                <Search className="w-5 h-5" /> Analyze Price Fairness
+              </button>
+            </div>
+
+            {fairnessResult && selectedProductData && selectedCountryData && (
+              <div ref={resultsRef} className="mt-10 space-y-6">
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">{selectedProductData.name}</h3>
+                      <p className="text-gray-500">{selectedCountryData.flag} {selectedCountryData.name} &middot; {selectedCountryData.currencySymbol}{selectedProductData.prices[selectedCountry].localPrice.toLocaleString()}{selectedProductData.unit}</p>
+                    </div>
+                    <div className="flex gap-2 mt-3 sm:mt-0">
+                      <button onClick={() => setShareModalOpen(true)} className="px-4 py-2 rounded-lg bg-indigo-50 text-indigo-600 text-sm font-medium flex items-center gap-1.5 hover:bg-indigo-100 transition-all"><Share2 className="w-4 h-4" /> Share</button>
+                      <button onClick={() => setShowMethodology(!showMethodology)} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-600 text-sm font-medium flex items-center gap-1.5 hover:bg-gray-200 transition-all"><HelpCircle className="w-4 h-4" /> How we score</button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div className="p-4 rounded-xl bg-gray-50 text-center">
+                      <p className="text-xs text-gray-500 mb-1">Your Price (USD)</p>
+                      <p className="text-xl font-bold text-gray-900">{formatUSD(fairnessResult.priceUSD)}</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-gray-50 text-center">
+                      <p className="text-xs text-gray-500 mb-1">US Price</p>
+                      <p className="text-xl font-bold text-indigo-600">{formatUSD(fairnessResult.usPrice)}</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-gray-50 text-center">
+                      <p className="text-xs text-gray-500 mb-1">Global Median</p>
+                      <p className="text-xl font-bold text-purple-600">{formatUSD(fairnessResult.globalMedianUSD)}</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-gray-50 text-center">
+                      <p className="text-xs text-gray-500 mb-1">% of Median Income</p>
+                      <p className="text-xl font-bold text-gray-900">{fairnessResult.incomePercentage.toFixed(2)}%</p>
+                      <p className="text-xs text-gray-400">(US: {fairnessResult.usIncomePercentage.toFixed(2)}%)</p>
+                    </div>
+                  </div>
+                  <div className="mb-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Scale className="w-5 h-5 text-indigo-600" />
+                      <h4 className="font-bold text-gray-900">Fairness Lenses</h4>
+                      <button onClick={() => setShowMethodology(true)} className="text-xs text-indigo-500 hover:underline">(What are these?)</button>
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      {fairnessLenses.map(lens => (
+                        <button key={lens.id} onClick={() => setActiveLens(lens.id)} className="text-left">
+                          <FairnessBar score={getScoreForLens(fairnessResult, lens.id)} label={lens.label} description={lens.description} active={activeLens === lens.id} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-center py-6">
+                    <ScoreGauge score={getScoreForLens(fairnessResult, activeLens)} size="lg" label={`${fairnessLenses.find(l => l.id === activeLens)?.label || ''} Score`} />
+                  </div>
+                </div>
+
+                {fairnessResult.factors.length > 0 && (
+                  <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">Why this price is different</h3>
+                    <p className="text-sm text-gray-500 mb-5">Context matters. Here is what contributes to the price in {selectedCountryData.name}.</p>
+                    <div className="space-y-3">
+                      {fairnessResult.factors.map((factor, i) => (
+                        <div key={i} className={`p-4 rounded-xl border ${factor.impact === 'increases' ? 'border-red-200 bg-red-50/50' : factor.impact === 'decreases' ? 'border-emerald-200 bg-emerald-50/50' : 'border-gray-200 bg-gray-50'}`}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-semibold text-gray-900 text-sm">{factor.label}</span>
+                            {factor.percentage > 0 && (<span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${factor.impact === 'increases' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>{factor.impact === 'increases' ? '+' : '-'}{factor.percentage}%</span>)}
+                          </div>
+                          <p className="text-sm text-gray-600">{factor.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-amber-50 rounded-2xl border border-amber-200 p-5 flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800 mb-0.5">Disclaimer</p>
+                    <p className="text-xs text-amber-700">Prices shown are estimates based on publicly available data. This tool provides price disparity analysis, not price accusations. Actual prices vary by provider, timing, and specific product configuration. Regional factors like taxes, import duties, and distribution costs legitimately affect pricing. Always verify with local sources.</p>
+                  </div>
+                </div>
+
+                {showMethodology && (
+                  <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowMethodology(false)}>
+                    <div className="bg-white rounded-2xl max-w-2xl w-full max-h-screen overflow-y-auto p-8" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-xl font-bold text-gray-900">How We Calculate Fairness</h3>
+                        <button onClick={() => setShowMethodology(false)} className="p-2 rounded-lg hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                      </div>
+                      <div className="space-y-6 text-sm text-gray-600">
+                        <div>
+                          <h4 className="font-bold text-gray-900 mb-2">Scoring System (0-100)</h4>
+                          <p>A score of 50 means the price matches the US baseline. Higher scores mean better value. Lower scores mean overpriced relative to baseline.</p>
+                          <ul className="mt-2 space-y-1 ml-4">
+                            <li className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-emerald-500" /> 60-100: Good value</li>
+                            <li className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-amber-500" /> 40-60: Market rate</li>
+                            <li className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-red-500" /> 0-40: Overpriced relative to baseline</li>
+                          </ul>
+                        </div>
+                        {fairnessLenses.map(lens => (<div key={lens.id}><h4 className="font-bold text-gray-900 mb-1">{lens.label}</h4><p>{lens.description}</p></div>))}
+                        <div>
+                          <h4 className="font-bold text-gray-900 mb-2">Data Sources</h4>
+                          <p>Prices compiled from official brand websites, government statistics, consumer price indices, and community reports. Exchange rates reflect approximate 2024 market rates.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {shareModalOpen && (
+                  <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShareModalOpen(false)}>
+                    <div className="bg-white rounded-2xl max-w-md w-full p-8" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-xl font-bold text-gray-900">Share This Result</h3>
+                        <button onClick={() => setShareModalOpen(false)} className="p-2 rounded-lg hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                      </div>
+                      <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl p-6 text-white mb-6">
+                        <div className="flex items-center gap-2 mb-3"><Shield className="w-5 h-5" /><span className="font-bold">FairPrice</span></div>
+                        <p className="text-2xl font-bold mb-1">{selectedProductData.name}</p>
+                        <p className="text-white/80 text-sm mb-4">{selectedCountryData.flag} {selectedCountryData.name}</p>
+                        <div className="flex items-center gap-4">
+                          <div><p className="text-xs text-white/60">Local Price</p><p className="font-bold">{selectedCountryData.currencySymbol}{selectedProductData.prices[selectedCountry].localPrice.toLocaleString()}</p></div>
+                          <div><p className="text-xs text-white/60">US Price</p><p className="font-bold">{formatUSD(fairnessResult.usPrice)}</p></div>
+                          <div><p className="text-xs text-white/60">Fairness</p><p className="font-bold text-xl">{Math.round(getScoreForLens(fairnessResult, activeLens))}/100</p></div>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-500 text-center">Screenshot this card and share on social media</p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-
-            <button
-              onClick={handleSearch}
-              className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold text-lg hover:shadow-xl hover:shadow-indigo-500/25 transition-all flex items-center justify-center gap-2"
-            >
-              <Search className="w-5 h-5" />
-              Check My Price
-            </button>
           </div>
+        </section>
+      )}
 
-          {showResults && results && verdict && (
-            <div ref={resultsRef} className="mt-10 space-y-6">
-              <div className={`p-8 rounded-3xl border-2 ${verdict.bgColor}`}>
-                <div className="flex items-start gap-4">
-                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
-                    verdict.label === 'Fair Price' ? 'bg-blue-100' : verdict.label === 'Overpriced' ? 'bg-red-100' : 'bg-emerald-100'
-                  }`}>
-                    {verdict.label === 'Fair Price' && <CheckCircle className="w-8 h-8 text-blue-600" />}
-                    {verdict.label === 'Overpriced' && <XCircle className="w-8 h-8 text-red-600" />}
-                    {verdict.label === 'Underpriced' && <CheckCircle className="w-8 h-8 text-emerald-600" />}
-                  </div>
-                  <div className="flex-1">
-                    <div className={`text-3xl font-extrabold ${verdict.color}`}>
-                      {verdict.label}
-                    </div>
-                    <p className="text-gray-700 mt-2 text-lg">{verdict.detail}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-3 gap-4">
-                <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center">
-                  <div className="text-sm text-gray-500 mb-1">Your Price</div>
-                  <div className="text-2xl font-bold text-gray-900">{formatPrice(priceNum, results.currency)}</div>
-                </div>
-                <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center">
-                  <div className="text-sm text-gray-500 mb-1">Average Price</div>
-                  <div className="text-2xl font-bold text-indigo-600">{formatPrice(results.avgPrice, results.currency)}</div>
-                </div>
-                <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center">
-                  <div className="text-sm text-gray-500 mb-1">Normal Range</div>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {formatPrice(results.minPrice, results.currency)} - {formatPrice(results.maxPrice, results.currency)}
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-2xl border border-gray-200 p-8">
-                <h3 className="text-lg font-bold text-gray-900 mb-6">Price Distribution</h3>
-                <div className="relative">
-                  <div className="flex items-end gap-2" style={{ height: 180 }}>
-                    {[...results.recentPrices]
-                      .sort((a, b) => a - b)
-                      .map((p, i) => {
-                        const maxP = Math.max(...results.recentPrices)
-                        const barHeight = Math.max(8, Math.round((p / maxP) * 140))
-                        const isClose = Math.abs(p - priceNum) < (results.maxPrice - results.minPrice) * 0.1
-                        return (
-                          <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
-                            <span className="text-xs text-gray-500 mb-1">{formatPrice(p, results.currency)}</span>
-                            <div
-                              className={`w-full rounded-t-lg ${
-                                isClose ? 'bg-indigo-500' : 'bg-gray-200'
-                              }`}
-                              style={{ height: barHeight }}
-                            />
-                          </div>
-                        )
-                      })}
-                  </div>
-                  <div className="mt-4 flex items-center gap-3">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded bg-indigo-500" />
-                      <span className="text-xs text-gray-600">Close to your price</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded bg-gray-200" />
-                      <span className="text-xs text-gray-600">Other reported prices</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-2xl border border-gray-200 p-8">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Detailed Breakdown</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Percentile</span>
-                    <span className="font-semibold text-gray-900">
-                      Your price is higher than {percentile}% of reports
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Total Reports</span>
-                    <span className="font-semibold text-gray-900 flex items-center gap-1">
-                      <Users className="w-4 h-4 text-indigo-500" />
-                      {results.reports.toLocaleString()} people reported
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                    <span className="text-gray-600">Location</span>
-                    <span className="font-semibold text-gray-900 flex items-center gap-1">
-                      <MapPin className="w-4 h-4 text-indigo-500" />
-                      {results.location}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between py-3">
-                    <span className="text-gray-600">Difference from Average</span>
-                    <span className={`font-semibold ${priceNum > results.avgPrice ? 'text-red-600' : priceNum < results.avgPrice ? 'text-emerald-600' : 'text-gray-900'}`}>
-                      {priceNum > results.avgPrice ? '+' : ''}{formatPrice(Math.abs(priceNum - results.avgPrice), results.currency)}
-                      {priceNum > results.avgPrice ? ' above average' : priceNum < results.avgPrice ? ' below average' : ' (exactly average)'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border border-indigo-100 p-6 flex items-start gap-3">
-                <Info className="w-5 h-5 text-indigo-500 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-indigo-700">
-                  Prices are based on crowdsourced data from real users. Actual prices may vary based on
-                  specific requirements, timing, and provider. Always get multiple quotes for expensive services.
-                </p>
+      {activeTab === 'compare' && (
+        <section className="py-12 sm:py-20">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold text-gray-900">Global Price Comparison</h2>
+              <p className="mt-2 text-gray-600">See how one product is priced across 20 countries</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-8">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Select a Product</label>
+              <div className="relative">
+                <select value={compareProduct} onChange={e => setCompareProduct(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 appearance-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="">Choose a product to compare globally...</option>
+                  {products.map(p => <option key={p.id} value={p.id}>{p.name} &mdash; {p.categoryLabel}</option>)}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               </div>
             </div>
-          )}
-        </div>
-      </section>
-
-      <section id="use-cases" className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
-              Works for everything
-            </h2>
-            <p className="mt-4 text-lg text-gray-600">
-              From plumbers to plane tickets — check any price, anywhere
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {useCases.map((uc) => (
-              <div
-                key={uc.title}
-                className="group rounded-2xl overflow-hidden border border-gray-200 hover:border-indigo-200 hover:shadow-xl transition-all"
-              >
-                <div className="h-48 overflow-hidden relative">
-                  <ImageWithFallback
-                    src={uc.image}
-                    fallback={uc.fallback}
-                    alt={uc.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                  <div className="absolute bottom-4 left-4">
-                    <div className="w-10 h-10 rounded-lg bg-white/90 backdrop-blur flex items-center justify-center">
-                      <uc.icon className="w-5 h-5 text-indigo-600" />
-                    </div>
+            {compareProduct && (() => {
+              const product = products.find(p => p.id === compareProduct)
+              if (!product) return null
+              const rows = countries.filter(c => product.prices[c.code]).map(c => {
+                const entry = product.prices[c.code]
+                const usd = priceToUSD(entry.localPrice, c)
+                const result = calculateFairness(product, c.code)
+                return { country: c, entry, usd, result }
+              }).sort((a, b) => a.usd - b.usd)
+              const maxUSD = Math.max(...rows.map(r => r.usd))
+              return (
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200">
+                          <th className="text-left px-6 py-4 text-sm font-semibold text-gray-700">Country</th>
+                          <th className="text-right px-6 py-4 text-sm font-semibold text-gray-700">Local Price</th>
+                          <th className="text-right px-6 py-4 text-sm font-semibold text-gray-700">USD Equiv.</th>
+                          <th className="text-center px-6 py-4 text-sm font-semibold text-gray-700">PPP Score</th>
+                          <th className="px-6 py-4 text-sm font-semibold text-gray-700">Relative Price</th>
+                          <th className="text-right px-6 py-4 text-sm font-semibold text-gray-700">% Income</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map((row) => (
+                          <tr key={row.country.code} className={`border-b border-gray-100 ${row.country.code === 'US' ? 'bg-indigo-50/50' : ''} hover:bg-gray-50`}>
+                            <td className="px-6 py-4"><div className="flex items-center gap-2"><span className="text-lg">{row.country.flag}</span><span className="font-medium text-gray-900 text-sm">{row.country.name}</span></div></td>
+                            <td className="px-6 py-4 text-right text-sm font-medium text-gray-900">{row.country.currencySymbol}{row.entry.localPrice.toLocaleString()}</td>
+                            <td className="px-6 py-4 text-right text-sm text-gray-600">{formatUSD(row.usd)}</td>
+                            <td className="px-6 py-4"><div className="flex justify-center"><ScoreGauge score={row.result?.pppScore || 50} size="sm" /></div></td>
+                            <td className="px-6 py-4"><div className="h-3 bg-gray-100 rounded-full overflow-hidden w-full min-w-24"><div className={`h-full rounded-full ${row.result && row.result.pppScore >= 60 ? 'bg-emerald-400' : row.result && row.result.pppScore >= 40 ? 'bg-amber-400' : 'bg-red-400'}`} style={{ width: `${(row.usd / maxUSD) * 100}%` }} /></div></td>
+                            <td className="px-6 py-4 text-right text-sm text-gray-600">{row.result ? row.result.incomePercentage.toFixed(2) : '-'}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-                <div className="p-6">
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">{uc.title}</h3>
-                  <p className="text-gray-600 text-sm leading-relaxed">{uc.description}</p>
+              )
+            })()}
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'quiz' && (
+        <section className="py-12 sm:py-20">
+          <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold text-gray-900">Guess Which Country Pays More</h2>
+              <p className="mt-2 text-gray-600">Test your intuition about global pricing</p>
+              {quizTotal > 0 && (
+                <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-full">
+                  <Trophy className="w-4 h-4 text-indigo-600" />
+                  <span className="text-sm font-semibold text-indigo-700">{quizScore}/{quizTotal} correct</span>
+                </div>
+              )}
+            </div>
+            {quizQuestion && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
+                <div className="text-center mb-8">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full mb-3">{quizQuestion.product.categoryLabel}</span>
+                  <h3 className="text-xl font-bold text-gray-900">{quizQuestion.product.name}</h3>
+                  <p className="text-sm text-gray-500 mt-1">{quizQuestion.product.description}</p>
+                </div>
+                <p className="text-center text-sm font-semibold text-gray-700 mb-6">Which country pays more (in USD)?</p>
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  {(['A', 'B'] as const).map(choice => {
+                    const country = choice === 'A' ? quizQuestion.countryA : quizQuestion.countryB
+                    const isCorrect = quizAnswer !== null && quizQuestion.answer === choice
+                    const isWrong = quizAnswer === choice && quizQuestion.answer !== choice
+                    const priceUSD = choice === 'A' ? quizQuestion.priceA_USD : quizQuestion.priceB_USD
+                    return (
+                      <button key={choice} onClick={() => answerQuiz(choice)} disabled={!!quizAnswer} className={`p-6 rounded-2xl border-2 text-center transition-all ${isCorrect ? 'border-emerald-500 bg-emerald-50' : isWrong ? 'border-red-500 bg-red-50' : quizAnswer ? 'border-gray-200 bg-gray-50' : 'border-gray-200 hover:border-indigo-400 hover:shadow-lg'}`}>
+                        <span className="text-4xl block mb-2">{country.flag}</span>
+                        <span className="font-bold text-gray-900 block">{country.name}</span>
+                        {quizAnswer && (<span className="text-sm font-semibold text-gray-600 mt-2 block">{formatUSD(priceUSD)}</span>)}
+                        {isCorrect && <CheckCircle className="w-5 h-5 text-emerald-500 mx-auto mt-2" />}
+                        {isWrong && <XCircle className="w-5 h-5 text-red-500 mx-auto mt-2" />}
+                      </button>
+                    )
+                  })}
+                </div>
+                {quizAnswer && (
+                  <div className="text-center">
+                    <p className={`font-bold mb-4 ${quizAnswer === quizQuestion.answer ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {quizAnswer === quizQuestion.answer ? 'Correct!' : 'Not quite!'} {quizQuestion.product.name} costs {formatUSD(Math.max(quizQuestion.priceA_USD, quizQuestion.priceB_USD))} in {quizQuestion.answer === 'A' ? quizQuestion.countryA.name : quizQuestion.countryB.name} vs {formatUSD(Math.min(quizQuestion.priceA_USD, quizQuestion.priceB_USD))} in {quizQuestion.answer === 'A' ? quizQuestion.countryB.name : quizQuestion.countryA.name}.
+                    </p>
+                    <button onClick={() => { setQuizQuestion(generateQuizQuestion()); setQuizAnswer(null) }} className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-all">Next Question</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'leaderboard' && (
+        <section className="py-12 sm:py-20">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold text-gray-900">Fairness Leaderboard</h2>
+              <p className="mt-2 text-gray-600">Countries ranked by average PPP-adjusted price fairness across all products</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+              {leaderboard.map((entry, i) => {
+                const medal = i === 0 ? '\u{1F947}' : i === 1 ? '\u{1F948}' : i === 2 ? '\u{1F949}' : null
+                return (
+                  <div key={entry.country.code} className={`flex items-center gap-4 px-6 py-4 ${i < leaderboard.length - 1 ? 'border-b border-gray-100' : ''} ${i < 3 ? 'bg-amber-50/30' : ''} hover:bg-gray-50`}>
+                    <div className="w-8 text-center">
+                      {medal ? <span className="text-xl">{medal}</span> : <span className="text-sm font-bold text-gray-400">#{i + 1}</span>}
+                    </div>
+                    <span className="text-2xl">{entry.country.flag}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 text-sm">{entry.country.name}</p>
+                      <p className="text-xs text-gray-500">{entry.country.region} &middot; {entry.productCount} products</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-24 h-2.5 bg-gray-100 rounded-full overflow-hidden hidden sm:block">
+                        <div className={`h-full rounded-full ${entry.avgScore >= 60 ? 'bg-emerald-400' : entry.avgScore >= 40 ? 'bg-amber-400' : 'bg-red-400'}`} style={{ width: `${entry.avgScore}%` }} />
+                      </div>
+                      <ScoreGauge score={entry.avgScore} size="sm" />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="mt-6 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border border-indigo-100 p-5 flex items-start gap-3">
+              <Info className="w-5 h-5 text-indigo-500 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-indigo-700">Higher scores indicate better value for consumers. Rankings use PPP-adjusted scores, which account for local purchasing power. A high score doesn't mean "cheap" &mdash; it means prices are fair relative to what locals earn and can buy.</p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'community' && (
+        <section className="py-12 sm:py-20">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold text-gray-900">Community Price Reports</h2>
+              <p className="mt-2 text-gray-600">Help improve pricing data. Submit prices, flag outdated info, and share local tips.</p>
+            </div>
+            <div className="grid sm:grid-cols-3 gap-4 mb-10">
+              {[
+                { icon: DollarSign, label: 'Submit a Price', desc: 'Share what you actually paid' },
+                { icon: Flag, label: 'Flag Outdated Data', desc: 'Report incorrect prices' },
+                { icon: MessageSquare, label: 'Add Local Notes', desc: 'Share tips like "student discount available"' },
+              ].map(item => (
+                <div key={item.label} className="bg-white rounded-xl border border-gray-200 p-5 text-center">
+                  <item.icon className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
+                  <p className="font-semibold text-gray-900 text-sm">{item.label}</p>
+                  <p className="text-xs text-gray-500 mt-1">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
+              <h3 className="text-lg font-bold text-gray-900 mb-6">Submit a Price Report</h3>
+              {communitySubmitted ? (
+                <div className="text-center py-10">
+                  <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
+                  <h4 className="text-xl font-bold text-gray-900 mb-2">Thank you!</h4>
+                  <p className="text-gray-600 mb-6">Your price report has been submitted for review. Community verification helps keep our data accurate.</p>
+                  <button onClick={() => { setCommunitySubmitted(false); setCommunityName(''); setCommunityPrice(''); setCommunityNotes('') }} className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold">Submit Another</button>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  <div className="grid sm:grid-cols-2 gap-5">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Product / Service</label>
+                      <input type="text" value={communityName} onChange={e => setCommunityName(e.target.value)} placeholder="e.g. Netflix Standard, MRI Scan" className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Price You Paid (local currency)</label>
+                      <input type="text" value={communityPrice} onChange={e => setCommunityPrice(e.target.value)} placeholder="e.g. $15.49, 649 INR" className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Notes (optional)</label>
+                    <textarea value={communityNotes} onChange={e => setCommunityNotes(e.target.value)} placeholder="e.g. Student discount available, Price includes tax, Hospital name..." rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none" />
+                  </div>
+                  <button onClick={() => communityName && communityPrice && setCommunitySubmitted(true)} disabled={!communityName || !communityPrice} className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <Zap className="w-4 h-4" /> Submit Price Report
+                  </button>
+                  <p className="text-xs text-gray-400 text-center">All submissions are reviewed before being added to our database. No personal data is stored.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'methodology' && (
+        <section className="py-12 sm:py-20">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold text-gray-900">How We Score Fairness</h2>
+              <p className="mt-2 text-gray-600">No black boxes. Here is exactly how everything works.</p>
+            </div>
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><Scale className="w-5 h-5 text-indigo-600" /> The Four Fairness Lenses</h3>
+                <p className="text-sm text-gray-600 mb-6">We believe no single metric captures "fairness." That is why we show four different perspectives:</p>
+                <div className="space-y-4">
+                  {fairnessLenses.map(lens => (
+                    <div key={lens.id} className="p-4 rounded-xl bg-gray-50 border border-gray-200">
+                      <h4 className="font-bold text-gray-900 text-sm mb-1">{lens.label}</h4>
+                      <p className="text-sm text-gray-600">{lens.description}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="py-24 bg-gradient-to-b from-white to-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
-              Why price transparency matters
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                stat: '$4,200',
-                description: 'Average annual savings when consumers know fair prices',
-              },
-              {
-                stat: '73%',
-                description: 'Of people have paid above market rate without knowing',
-              },
-              {
-                stat: '10x',
-                description: 'Price variation for the same medical procedure in the US',
-              },
-              {
-                stat: '0',
-                description: 'Industries that want you to have this information',
-              },
-            ].map((item) => (
-              <div
-                key={item.stat}
-                className="p-8 rounded-2xl bg-white border border-gray-200 text-center hover:shadow-lg transition-all"
-              >
-                <div className="text-4xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-3">
-                  {item.stat}
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><BarChart3 className="w-5 h-5 text-indigo-600" /> Score Calculation</h3>
+                <div className="space-y-3 text-sm text-gray-600">
+                  <p>Each lens produces a score from 0 to 100:</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-center"><p className="font-bold text-emerald-700">60-100</p><p className="text-xs text-emerald-600">Good value</p></div>
+                    <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-center"><p className="font-bold text-amber-700">40-60</p><p className="text-xs text-amber-600">Market rate</p></div>
+                    <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-center"><p className="font-bold text-red-700">0-40</p><p className="text-xs text-red-600">Overpriced</p></div>
+                  </div>
+                  <p>A score of 50 means the price exactly matches the US baseline after adjustments. The formula compares the adjusted local price to the US price and maps the ratio to a 0-100 scale.</p>
                 </div>
-                <p className="text-gray-600 text-sm">{item.description}</p>
               </div>
-            ))}
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><FileText className="w-5 h-5 text-indigo-600" /> Price Context Factors</h3>
+                <p className="text-sm text-gray-600 mb-4">We identify and explain factors that legitimately affect pricing:</p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {[
+                    { label: 'VAT / GST', desc: 'Sales taxes that are often included in the listed price' },
+                    { label: 'Import Duties', desc: 'Tariffs on imported goods that increase local prices' },
+                    { label: 'Distribution Costs', desc: 'Logistics, warehousing, and retail markups' },
+                    { label: 'Purchasing Power', desc: 'How far local currency goes in the local economy' },
+                    { label: 'Regulations', desc: 'Price controls, licensing requirements, or subsidies' },
+                    { label: 'Market Structure', desc: 'Competition levels, monopolies, or oligopolies' },
+                  ].map(f => (
+                    <div key={f.label} className="p-3 rounded-lg border border-gray-200">
+                      <p className="font-semibold text-gray-900 text-sm">{f.label}</p>
+                      <p className="text-xs text-gray-500">{f.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><BookOpen className="w-5 h-5 text-indigo-600" /> Data Sources & Assumptions</h3>
+                <div className="space-y-3 text-sm text-gray-600">
+                  <p><strong>Price data:</strong> Official brand websites, government consumer price databases, community reports, and publicly available pricing APIs.</p>
+                  <p><strong>Economic indicators:</strong> World Bank PPP data, IMF cost of living indices, OECD median income statistics.</p>
+                  <p><strong>Exchange rates:</strong> Approximate 2024 market rates. Real-time rates may differ slightly.</p>
+                  <p><strong>Tax rates:</strong> Standard national VAT/GST rates. Reduced rates may apply to certain categories (food, medicine, etc.).</p>
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><Shield className="w-5 h-5 text-indigo-600" /> Our Principles</h3>
+                <div className="space-y-3">
+                  {[
+                    { title: "Inform, don't accuse", desc: 'We show price disparities with context. We say "price disparity" not "price abuse."' },
+                    { title: 'Multiple perspectives', desc: 'Different fairness lenses avoid oversimplification. A "high" price may be fair when context is considered.' },
+                    { title: 'Transparent methodology', desc: 'Every calculation is explained. Click any score to see how it was derived.' },
+                    { title: 'Community-driven', desc: 'Users can submit prices, flag outdated data, and add local context notes.' },
+                    { title: 'Brand-friendly', desc: 'We highlight companies that price fairly and explain legitimate reasons for price differences.' },
+                  ].map(p => (
+                    <div key={p.title} className="flex gap-3">
+                      <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                      <div><p className="font-semibold text-gray-900 text-sm">{p.title}</p><p className="text-sm text-gray-600">{p.desc}</p></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-amber-50 rounded-2xl border border-amber-200 p-5 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800 mb-1">Important Disclaimer</p>
+                  <p className="text-xs text-amber-700">FairPrice provides price disparity analysis based on publicly available data and estimates. This is not financial or legal advice. Prices are approximate and may not reflect current market conditions. Regional factors including taxes, regulations, import restrictions, and distribution costs legitimately affect pricing. We encourage users to verify prices with local sources before making purchasing decisions. FairPrice does not accuse any company of unfair pricing &mdash; we provide data and context for consumers to make informed decisions.</p>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
-
-      <section className="py-24 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/10 rounded-full translate-x-1/2 translate-y-1/2 blur-3xl" />
-
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">
-            Stop overpaying. Start checking.
-          </h2>
-          <p className="text-xl text-white/80 mb-10 max-w-2xl mx-auto">
-            Join millions of smart consumers who check prices before they pay. Knowledge is your best negotiating tool.
-          </p>
-          <a
-            href="#checker"
-            className="inline-flex items-center gap-2 px-10 py-4 rounded-full bg-white text-indigo-600 font-bold text-lg hover:shadow-2xl transition-all"
-          >
-            Check a Price Now
-            <ArrowRight className="w-5 h-5" />
-          </a>
-        </div>
-      </section>
+        </section>
+      )}
 
       <footer className="bg-gray-900 text-gray-400 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -696,34 +789,25 @@ function App() {
                 </div>
                 <span className="text-xl font-bold text-white">FairPrice</span>
               </div>
-              <p className="text-sm leading-relaxed max-w-md">
-                The global price fairness checker. We believe everyone deserves to know
-                if they're paying a fair price — no matter where they live or what they're buying.
-              </p>
+              <p className="text-sm leading-relaxed max-w-md mb-4">The global price fairness checker. We help people understand pricing reality &mdash; not to accuse, but to inform. Knowledge is your best negotiating tool.</p>
+              <p className="text-xs text-gray-500">Prices are estimates. This tool provides analysis, not accusations. Always verify with local sources.</p>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Explore</h4>
+              <ul className="space-y-2 text-sm">
+                {tabs.map(tab => (<li key={tab.id}><button onClick={() => { setActiveTab(tab.id); window.scrollTo(0, 0) }} className="hover:text-indigo-400 transition-colors">{tab.label}</button></li>))}
+              </ul>
             </div>
             <div>
               <h4 className="text-white font-semibold mb-4">Categories</h4>
               <ul className="space-y-2 text-sm">
-                {categories.map((cat) => (
-                  <li key={cat.id}>
-                    <a href="#checker" className="hover:text-indigo-400 transition-colors">
-                      {cat.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">About</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#how-it-works" className="hover:text-indigo-400 transition-colors">How it Works</a></li>
-                <li><a href="#use-cases" className="hover:text-indigo-400 transition-colors">Use Cases</a></li>
-                <li><a href="#checker" className="hover:text-indigo-400 transition-colors">Price Checker</a></li>
+                {productCategories.filter(c => c.id !== 'all').map(cat => (<li key={cat.id}><button onClick={() => { setActiveTab('checker'); setCategoryFilter(cat.id); window.scrollTo(0, 0) }} className="hover:text-indigo-400 transition-colors">{cat.label}</button></li>))}
               </ul>
             </div>
           </div>
           <div className="border-t border-gray-800 pt-8 text-center text-sm">
-            <p>FairPrice Global Price Checker. Built for consumers, by consumers.</p>
+            <p>FairPrice &mdash; Global Price Fairness Checker. Built for consumers, by consumers.</p>
+            <p className="text-xs text-gray-600 mt-2">Prices are estimates based on publicly available data. Not financial advice. Use at your own discretion.</p>
           </div>
         </div>
       </footer>
