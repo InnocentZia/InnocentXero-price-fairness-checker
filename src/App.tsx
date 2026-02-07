@@ -5,9 +5,10 @@ import {
   BarChart3, ChevronDown, Wrench,
   Stethoscope, ArrowRight, CheckCircle, AlertTriangle, XCircle, Info, Share2,
   Flag, MessageSquare, Zap, Eye, HelpCircle, Monitor, Package, Cloud,
-  ShoppingBasket, Gamepad2, Trophy,
+  ShoppingBasket, Gamepad2, Trophy, Database, Wifi, WifiOff,
   Scale, BookOpen, FileText, Home, X, TrendingUp, TrendingDown, MapPin,
 } from 'lucide-react'
+import { fetchStats } from './api'
 import {
   countries, products, productCategories, fairnessLenses,
   calculateFairness, generateQuizQuestion, getLeaderboard,
@@ -78,6 +79,8 @@ function App() {
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [vsWorldCountry, setVsWorldCountry] = useState('')
+  const [apiConnected, setApiConnected] = useState<boolean | null>(null)
+  const [apiStats, setApiStats] = useState<{ total_products: number; total_countries: number; total_price_entries: number } | null>(null)
   const [productSearch, setProductSearch] = useState('')
   const [countrySearch, setCountrySearch] = useState('')
   const [productDropdownOpen, setProductDropdownOpen] = useState(false)
@@ -116,6 +119,12 @@ function App() {
   useEffect(() => {
     if (activeTab === 'quiz' && !quizQuestion) startQuiz()
   }, [activeTab])
+
+  useEffect(() => {
+    fetchStats()
+      .then(stats => { setApiConnected(true); setApiStats(stats) })
+      .catch(() => setApiConnected(false))
+  }, [])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -1015,10 +1024,19 @@ function App() {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Notes (optional)</label>
                     <textarea value={communityNotes} onChange={e => setCommunityNotes(e.target.value)} placeholder="e.g. Student discount available, Price includes tax, Hospital name..." rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none" />
                   </div>
-                  <button onClick={() => communityName && communityPrice && setCommunitySubmitted(true)} disabled={!communityName || !communityPrice} className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                    <Zap className="w-4 h-4" /> Submit Price Report
-                  </button>
-                  <p className="text-xs text-gray-400 text-center">All submissions are reviewed before being added to our database. No personal data is stored.</p>
+                    <button onClick={() => communityName && communityPrice && setCommunitySubmitted(true)} disabled={!communityName || !communityPrice} className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                      <Zap className="w-4 h-4" /> Submit Price Report
+                    </button>
+                    <div className="flex items-center justify-center gap-2 mt-3">
+                      {apiConnected ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600"><Wifi className="w-3 h-3" /> Connected to backend database</span>
+                      ) : apiConnected === false ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-amber-600"><WifiOff className="w-3 h-3" /> Backend offline — submissions stored locally</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-gray-400"><Database className="w-3 h-3" /> Connecting to database...</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 text-center">All submissions are reviewed before being added to our database. No personal data is stored.</p>
                 </div>
               )}
             </div>
@@ -1080,7 +1098,7 @@ function App() {
               <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
                 <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><BookOpen className="w-5 h-5 text-indigo-600" /> Data Sources & Assumptions</h3>
                 <div className="space-y-3 text-sm text-gray-600">
-                  <p><strong>Price data:</strong> Official brand websites, government consumer price databases, community reports, and publicly available pricing APIs.</p>
+                  <p><strong>Price data:</strong> Official brand websites, government consumer price databases, community reports, and publicly available pricing APIs.{apiStats && ` Currently tracking ${apiStats.total_products} products across ${apiStats.total_countries} countries with ${apiStats.total_price_entries.toLocaleString()} price entries in our database.`}</p>
                   <p><strong>Economic indicators:</strong> World Bank PPP data, IMF cost of living indices, OECD median income statistics.</p>
                   <p><strong>Exchange rates:</strong> Approximate 2024 market rates. Real-time rates may differ slightly.</p>
                   <p><strong>Tax rates:</strong> Standard national VAT/GST rates. Reduced rates may apply to certain categories (food, medicine, etc.).</p>
@@ -1145,6 +1163,15 @@ function App() {
           <div className="border-t border-gray-800 pt-8 text-center text-sm">
             <p>FairPrice &mdash; Global Price Fairness Checker. Built for consumers, by consumers.</p>
             <p className="text-xs text-gray-600 mt-2">Prices are estimates based on publicly available data. Not financial advice. Use at your own discretion.</p>
+            <div className="mt-4 flex items-center justify-center gap-2">
+              {apiConnected ? (
+                <span className="inline-flex items-center gap-1.5 text-xs text-emerald-500"><Database className="w-3 h-3" /> API Connected{apiStats ? ` — ${apiStats.total_price_entries.toLocaleString()} price entries` : ''}</span>
+              ) : apiConnected === false ? (
+                <span className="inline-flex items-center gap-1.5 text-xs text-amber-500"><WifiOff className="w-3 h-3" /> Running in offline mode</span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-xs text-gray-600"><Database className="w-3 h-3" /> Connecting...</span>
+              )}
+            </div>
           </div>
         </div>
       </footer>
