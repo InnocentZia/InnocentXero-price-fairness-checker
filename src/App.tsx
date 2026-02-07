@@ -78,9 +78,17 @@ function App() {
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [vsWorldCountry, setVsWorldCountry] = useState('')
+  const [productSearch, setProductSearch] = useState('')
+  const [countrySearch, setCountrySearch] = useState('')
+  const [productDropdownOpen, setProductDropdownOpen] = useState(false)
+  const [countryDropdownOpen, setCountryDropdownOpen] = useState(false)
   const resultsRef = useRef<HTMLDivElement>(null)
+  const productDropdownRef = useRef<HTMLDivElement>(null)
+  const countryDropdownRef = useRef<HTMLDivElement>(null)
 
-  const filteredProducts = categoryFilter === 'all' ? products : products.filter(p => p.category === categoryFilter)
+  const categoryProducts = categoryFilter === 'all' ? products : products.filter(p => p.category === categoryFilter)
+  const filteredProducts = productSearch ? categoryProducts.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()) || p.categoryLabel.toLowerCase().includes(productSearch.toLowerCase())) : categoryProducts
+  const filteredCountries = countrySearch ? countries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())) : countries
   const selectedProductData = products.find(p => p.id === selectedProduct)
   const selectedCountryData = countries.find(c => c.code === selectedCountry)
 
@@ -108,6 +116,15 @@ function App() {
   useEffect(() => {
     if (activeTab === 'quiz' && !quizQuestion) startQuiz()
   }, [activeTab])
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (productDropdownRef.current && !productDropdownRef.current.contains(e.target as Node)) setProductDropdownOpen(false)
+      if (countryDropdownRef.current && !countryDropdownRef.current.contains(e.target as Node)) setCountryDropdownOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   const leaderboard = activeTab === 'leaderboard' ? getLeaderboard() : []
 
@@ -333,22 +350,69 @@ function App() {
               <div className="grid sm:grid-cols-2 gap-6 mb-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Product / Service</label>
-                  <div className="relative">
-                    <select value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 appearance-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                      <option value="">Select a product...</option>
-                      {filteredProducts.map(p => (<option key={p.id} value={p.id}>{p.name} &mdash; {p.categoryLabel}</option>))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <div className="relative" ref={productDropdownRef}>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder={selectedProductData ? selectedProductData.name : 'Search products...'}
+                        value={productSearch}
+                        onChange={e => { setProductSearch(e.target.value); setProductDropdownOpen(true) }}
+                        onFocus={() => setProductDropdownOpen(true)}
+                        className={`w-full pl-10 pr-10 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${selectedProductData && !productSearch ? 'text-gray-900' : ''}`}
+                      />
+                      {selectedProduct && !productSearch && (
+                        <span className="absolute left-10 top-1/2 -translate-y-1/2 text-gray-900 pointer-events-none">{selectedProductData?.name}</span>
+                      )}
+                      <button onClick={() => { if (selectedProduct) { setSelectedProduct(''); setProductSearch('') } else { setProductDropdownOpen(!productDropdownOpen) } }} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-100">
+                        {selectedProduct ? <X className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                      </button>
+                    </div>
+                    {productDropdownOpen && (
+                      <div className="absolute z-50 mt-1 w-full bg-white rounded-xl border border-gray-200 shadow-lg max-h-64 overflow-y-auto">
+                        {filteredProducts.length === 0 ? (
+                          <div className="px-4 py-3 text-sm text-gray-500">No products found</div>
+                        ) : filteredProducts.map(p => (
+                          <button key={p.id} onClick={() => { setSelectedProduct(p.id); setProductSearch(''); setProductDropdownOpen(false) }} className={`w-full text-left px-4 py-2.5 text-sm hover:bg-indigo-50 flex justify-between items-center ${selectedProduct === p.id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700'}`}>
+                            <span>{p.name}</span>
+                            <span className="text-xs text-gray-400 ml-2">{p.categoryLabel}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Country</label>
-                  <div className="relative">
-                    <select value={selectedCountry} onChange={e => setSelectedCountry(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 appearance-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                      <option value="">Select a country...</option>
-                      {countries.filter(c => !selectedProduct || products.find(p => p.id === selectedProduct)?.prices[c.code]).map(c => (<option key={c.code} value={c.code}>{c.flag} {c.name}</option>))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <div className="relative" ref={countryDropdownRef}>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder={selectedCountryData ? `${selectedCountryData.flag} ${selectedCountryData.name}` : 'Search countries...'}
+                        value={countrySearch}
+                        onChange={e => { setCountrySearch(e.target.value); setCountryDropdownOpen(true) }}
+                        onFocus={() => setCountryDropdownOpen(true)}
+                        className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                      {selectedCountry && !countrySearch && (
+                        <span className="absolute left-10 top-1/2 -translate-y-1/2 text-gray-900 pointer-events-none">{selectedCountryData?.flag} {selectedCountryData?.name}</span>
+                      )}
+                      <button onClick={() => { if (selectedCountry) { setSelectedCountry(''); setCountrySearch('') } else { setCountryDropdownOpen(!countryDropdownOpen) } }} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-100">
+                        {selectedCountry ? <X className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                      </button>
+                    </div>
+                    {countryDropdownOpen && (
+                      <div className="absolute z-50 mt-1 w-full bg-white rounded-xl border border-gray-200 shadow-lg max-h-64 overflow-y-auto">
+                        {filteredCountries.filter(c => !selectedProduct || products.find(p => p.id === selectedProduct)?.prices[c.code]).length === 0 ? (
+                          <div className="px-4 py-3 text-sm text-gray-500">No countries found</div>
+                        ) : filteredCountries.filter(c => !selectedProduct || products.find(p => p.id === selectedProduct)?.prices[c.code]).map(c => (
+                          <button key={c.code} onClick={() => { setSelectedCountry(c.code); setCountrySearch(''); setCountryDropdownOpen(false) }} className={`w-full text-left px-4 py-2.5 text-sm hover:bg-indigo-50 ${selectedCountry === c.code ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700'}`}>
+                            {c.flag} {c.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
