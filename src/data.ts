@@ -92,17 +92,27 @@ export const countries: Country[] = [
   { code: 'ID', name: 'Indonesia', flag: '🇮🇩', currency: 'IDR', currencySymbol: 'Rp', exchangeRate: 15600, pppFactor: 3.2, medianIncome: 4000, costOfLivingIndex: 32, vatRate: 11, importDutyAvg: 10, region: 'Asia', incomeGroup: 'lower-middle' },
   { code: 'EG', name: 'Egypt', flag: '🇪🇬', currency: 'EGP', currencySymbol: 'E£', exchangeRate: 30.9, pppFactor: 3.8, medianIncome: 3000, costOfLivingIndex: 25, vatRate: 14, importDutyAvg: 20, region: 'Africa', incomeGroup: 'lower-middle' },
   { code: 'NG', name: 'Nigeria', flag: '🇳🇬', currency: 'NGN', currencySymbol: '₦', exchangeRate: 1500, pppFactor: 4.0, medianIncome: 2000, costOfLivingIndex: 22, vatRate: 8, importDutyAvg: 20, region: 'Africa', incomeGroup: 'lower-middle' },
+  { code: 'IT', name: 'Italy', flag: '🇮🇹', currency: 'EUR', currencySymbol: '€', exchangeRate: 0.92, pppFactor: 0.9, medianIncome: 28000, costOfLivingIndex: 75, vatRate: 22, importDutyAvg: 4, region: 'Europe', incomeGroup: 'high' },
+  { code: 'ES', name: 'Spain', flag: '🇪🇸', currency: 'EUR', currencySymbol: '€', exchangeRate: 0.92, pppFactor: 0.95, medianIncome: 24000, costOfLivingIndex: 65, vatRate: 21, importDutyAvg: 4, region: 'Europe', incomeGroup: 'high' },
+  { code: 'NL', name: 'Netherlands', flag: '🇳🇱', currency: 'EUR', currencySymbol: '€', exchangeRate: 0.92, pppFactor: 0.82, medianIncome: 38000, costOfLivingIndex: 88, vatRate: 21, importDutyAvg: 4, region: 'Europe', incomeGroup: 'high' },
+  { code: 'NO', name: 'Norway', flag: '🇳🇴', currency: 'NOK', currencySymbol: 'kr', exchangeRate: 10.5, pppFactor: 0.65, medianIncome: 50000, costOfLivingIndex: 130, vatRate: 25, importDutyAvg: 3, region: 'Europe', incomeGroup: 'high' },
+  { code: 'SG', name: 'Singapore', flag: '🇸🇬', currency: 'SGD', currencySymbol: 'S$', exchangeRate: 1.34, pppFactor: 0.72, medianIncome: 42000, costOfLivingIndex: 105, vatRate: 9, importDutyAvg: 0, region: 'Asia', incomeGroup: 'high' },
+  { code: 'TH', name: 'Thailand', flag: '🇹🇭', currency: 'THB', currencySymbol: '฿', exchangeRate: 35.5, pppFactor: 2.8, medianIncome: 5000, costOfLivingIndex: 35, vatRate: 7, importDutyAvg: 10, region: 'Asia', incomeGroup: 'upper-middle' },
+  { code: 'PH', name: 'Philippines', flag: '🇵🇭', currency: 'PHP', currencySymbol: '₱', exchangeRate: 56, pppFactor: 3.3, medianIncome: 3500, costOfLivingIndex: 30, vatRate: 12, importDutyAvg: 10, region: 'Asia', incomeGroup: 'lower-middle' },
+  { code: 'CO', name: 'Colombia', flag: '🇨🇴', currency: 'COP', currencySymbol: 'COL$', exchangeRate: 3900, pppFactor: 2.5, medianIncome: 5500, costOfLivingIndex: 35, vatRate: 19, importDutyAvg: 12, region: 'South America', incomeGroup: 'upper-middle' },
+  { code: 'AR', name: 'Argentina', flag: '🇦🇷', currency: 'ARS', currencySymbol: 'AR$', exchangeRate: 870, pppFactor: 3.0, medianIncome: 5000, costOfLivingIndex: 32, vatRate: 21, importDutyAvg: 16, region: 'South America', incomeGroup: 'upper-middle' },
+  { code: 'KE', name: 'Kenya', flag: '🇰🇪', currency: 'KES', currencySymbol: 'KSh', exchangeRate: 155, pppFactor: 3.5, medianIncome: 2500, costOfLivingIndex: 28, vatRate: 16, importDutyAvg: 15, region: 'Africa', incomeGroup: 'lower-middle' },
 ]
 
 function generatePrices(baseUSD: number, category: string, overrides?: Partial<Record<string, Partial<ProductPrice>>>): Record<string, ProductPrice> {
   const prices: Record<string, ProductPrice> = {}
   const categoryMultipliers: Record<string, Record<string, number>> = {
-    digital: { US: 1, GB: 1.05, DE: 1.08, FR: 1.08, JP: 1.1, AU: 1.12, CA: 1.02, CH: 1.0, SE: 1.08, KR: 1.05, AE: 1.0, PL: 0.65, BR: 0.55, MX: 0.6, TR: 0.45, ZA: 0.55, IN: 0.35, ID: 0.4, EG: 0.35, NG: 0.4 },
-    physical: { US: 1, GB: 1.1, DE: 1.15, FR: 1.12, JP: 1.2, AU: 1.18, CA: 1.05, CH: 1.35, SE: 1.15, KR: 1.1, AE: 0.95, PL: 0.75, BR: 1.4, MX: 0.9, TR: 1.1, ZA: 0.85, IN: 0.7, ID: 0.75, EG: 0.8, NG: 0.9 },
-    saas: { US: 1, GB: 1.0, DE: 1.05, FR: 1.05, JP: 1.0, AU: 1.08, CA: 1.0, CH: 1.0, SE: 1.05, KR: 0.95, AE: 1.0, PL: 0.6, BR: 0.5, MX: 0.55, TR: 0.4, ZA: 0.5, IN: 0.3, ID: 0.35, EG: 0.3, NG: 0.35 },
-    essential: { US: 1, GB: 0.9, DE: 0.85, FR: 0.88, JP: 1.1, AU: 1.05, CA: 0.95, CH: 1.5, SE: 1.0, KR: 0.85, AE: 0.8, PL: 0.45, BR: 0.5, MX: 0.4, TR: 0.35, ZA: 0.4, IN: 0.22, ID: 0.25, EG: 0.2, NG: 0.2 },
-    service: { US: 1, GB: 0.85, DE: 0.8, FR: 0.82, JP: 0.9, AU: 0.95, CA: 0.88, CH: 1.4, SE: 0.9, KR: 0.7, AE: 0.75, PL: 0.4, BR: 0.35, MX: 0.3, TR: 0.25, ZA: 0.3, IN: 0.15, ID: 0.18, EG: 0.15, NG: 0.12 },
-    medical: { US: 1, GB: 0.25, DE: 0.3, FR: 0.28, JP: 0.35, AU: 0.4, CA: 0.3, CH: 0.5, SE: 0.2, KR: 0.3, AE: 0.45, PL: 0.15, BR: 0.2, MX: 0.18, TR: 0.12, ZA: 0.15, IN: 0.08, ID: 0.1, EG: 0.08, NG: 0.06 },
+    digital: { US: 1, GB: 1.05, DE: 1.08, FR: 1.08, JP: 1.1, AU: 1.12, CA: 1.02, CH: 1.0, SE: 1.08, KR: 1.05, AE: 1.0, PL: 0.65, BR: 0.55, MX: 0.6, TR: 0.45, ZA: 0.55, IN: 0.35, ID: 0.4, EG: 0.35, NG: 0.4, IT: 1.08, ES: 1.05, NL: 1.05, NO: 1.08, SG: 1.0, TH: 0.45, PH: 0.4, CO: 0.5, AR: 0.45, KE: 0.4 },
+    physical: { US: 1, GB: 1.1, DE: 1.15, FR: 1.12, JP: 1.2, AU: 1.18, CA: 1.05, CH: 1.35, SE: 1.15, KR: 1.1, AE: 0.95, PL: 0.75, BR: 1.4, MX: 0.9, TR: 1.1, ZA: 0.85, IN: 0.7, ID: 0.75, EG: 0.8, NG: 0.9, IT: 1.15, ES: 1.1, NL: 1.12, NO: 1.2, SG: 1.05, TH: 0.8, PH: 0.75, CO: 0.85, AR: 1.2, KE: 0.8 },
+    saas: { US: 1, GB: 1.0, DE: 1.05, FR: 1.05, JP: 1.0, AU: 1.08, CA: 1.0, CH: 1.0, SE: 1.05, KR: 0.95, AE: 1.0, PL: 0.6, BR: 0.5, MX: 0.55, TR: 0.4, ZA: 0.5, IN: 0.3, ID: 0.35, EG: 0.3, NG: 0.35, IT: 1.05, ES: 1.0, NL: 1.0, NO: 1.05, SG: 1.0, TH: 0.4, PH: 0.35, CO: 0.45, AR: 0.4, KE: 0.35 },
+    essential: { US: 1, GB: 0.9, DE: 0.85, FR: 0.88, JP: 1.1, AU: 1.05, CA: 0.95, CH: 1.5, SE: 1.0, KR: 0.85, AE: 0.8, PL: 0.45, BR: 0.5, MX: 0.4, TR: 0.35, ZA: 0.4, IN: 0.22, ID: 0.25, EG: 0.2, NG: 0.2, IT: 0.88, ES: 0.82, NL: 0.9, NO: 1.2, SG: 1.0, TH: 0.3, PH: 0.25, CO: 0.35, AR: 0.4, KE: 0.22 },
+    service: { US: 1, GB: 0.85, DE: 0.8, FR: 0.82, JP: 0.9, AU: 0.95, CA: 0.88, CH: 1.4, SE: 0.9, KR: 0.7, AE: 0.75, PL: 0.4, BR: 0.35, MX: 0.3, TR: 0.25, ZA: 0.3, IN: 0.15, ID: 0.18, EG: 0.15, NG: 0.12, IT: 0.8, ES: 0.75, NL: 0.85, NO: 1.1, SG: 0.9, TH: 0.2, PH: 0.15, CO: 0.25, AR: 0.2, KE: 0.12 },
+    medical: { US: 1, GB: 0.25, DE: 0.3, FR: 0.28, JP: 0.35, AU: 0.4, CA: 0.3, CH: 0.5, SE: 0.2, KR: 0.3, AE: 0.45, PL: 0.15, BR: 0.2, MX: 0.18, TR: 0.12, ZA: 0.15, IN: 0.08, ID: 0.1, EG: 0.08, NG: 0.06, IT: 0.28, ES: 0.25, NL: 0.3, NO: 0.2, SG: 0.4, TH: 0.1, PH: 0.08, CO: 0.12, AR: 0.1, KE: 0.06 },
   }
   const multipliers = categoryMultipliers[category] || categoryMultipliers.physical
   for (const c of countries) {
@@ -429,6 +439,268 @@ export const products: Product[] = [
       TR: { localPrice: 15000 }, EG: { localPrice: 8000 }, NG: { localPrice: 400000 },
     }),
   },
+  {
+    id: 'rice-1kg',
+    name: 'Rice (1 kg)',
+    category: 'essential',
+    categoryLabel: 'Essentials',
+    description: 'One kilogram of white rice',
+    unit: '',
+    prices: generatePrices(1.80, 'essential', {
+      US: { localPrice: 1.80, importDuty: 0 }, GB: { localPrice: 1.20, importDuty: 0 }, DE: { localPrice: 1.50, importDuty: 0 },
+      JP: { localPrice: 450, importDuty: 0 }, AU: { localPrice: 2.50, importDuty: 0 }, CA: { localPrice: 2.20, importDuty: 0 },
+      IN: { localPrice: 45, importDuty: 0, notes: 'Staple food; prices regulated by government' },
+      TH: { localPrice: 40, importDuty: 0, notes: 'Major rice exporter' },
+      PH: { localPrice: 50, importDuty: 0 }, EG: { localPrice: 18, importDuty: 0 },
+      NG: { localPrice: 1200, importDuty: 0 }, KE: { localPrice: 150, importDuty: 0 },
+    }),
+  },
+  {
+    id: 'eggs-dozen',
+    name: 'Eggs (dozen)',
+    category: 'essential',
+    categoryLabel: 'Essentials',
+    description: 'One dozen large eggs',
+    unit: '',
+    prices: generatePrices(3.50, 'essential', {
+      US: { localPrice: 3.50, importDuty: 0 }, GB: { localPrice: 2.80, importDuty: 0 }, DE: { localPrice: 2.50, importDuty: 0 },
+      JP: { localPrice: 280, importDuty: 0 }, AU: { localPrice: 5.50, importDuty: 0 }, CA: { localPrice: 4.20, importDuty: 0 },
+      CH: { localPrice: 6.90, importDuty: 0 }, IN: { localPrice: 80, importDuty: 0 }, BR: { localPrice: 12, importDuty: 0 },
+      MX: { localPrice: 55, importDuty: 0 }, NG: { localPrice: 2500, importDuty: 0 }, KE: { localPrice: 300, importDuty: 0 },
+    }),
+  },
+  {
+    id: 'bread-loaf',
+    name: 'Bread (loaf)',
+    category: 'essential',
+    categoryLabel: 'Essentials',
+    description: 'Standard white bread loaf (~500g)',
+    unit: '',
+    prices: generatePrices(3.00, 'essential', {
+      US: { localPrice: 3.00, importDuty: 0 }, GB: { localPrice: 1.10, importDuty: 0 }, DE: { localPrice: 1.50, importDuty: 0 },
+      FR: { localPrice: 1.30, importDuty: 0, notes: 'Baguette tradition; price informally regulated' },
+      JP: { localPrice: 200, importDuty: 0 }, AU: { localPrice: 3.50, importDuty: 0 }, CA: { localPrice: 3.20, importDuty: 0 },
+      CH: { localPrice: 3.80, importDuty: 0 }, IN: { localPrice: 40, importDuty: 0 }, EG: { localPrice: 5, importDuty: 0, notes: 'Government-subsidized bread (baladi)' },
+    }),
+  },
+  {
+    id: 'chicken-1kg',
+    name: 'Chicken Breast (1 kg)',
+    category: 'essential',
+    categoryLabel: 'Essentials',
+    description: 'One kilogram of boneless chicken breast',
+    unit: '',
+    prices: generatePrices(8.50, 'essential', {
+      US: { localPrice: 8.50, importDuty: 0 }, GB: { localPrice: 6.50, importDuty: 0 }, DE: { localPrice: 7.50, importDuty: 0 },
+      JP: { localPrice: 800, importDuty: 0 }, AU: { localPrice: 12.00, importDuty: 0 }, CA: { localPrice: 11.00, importDuty: 0 },
+      CH: { localPrice: 22, importDuty: 0 }, IN: { localPrice: 250, importDuty: 0 }, BR: { localPrice: 20, importDuty: 0, notes: 'Major poultry exporter' },
+      TH: { localPrice: 120, importDuty: 0 }, PH: { localPrice: 220, importDuty: 0 }, KE: { localPrice: 600, importDuty: 0 },
+    }),
+  },
+  {
+    id: 'coffee-starbucks',
+    name: 'Starbucks Latte (tall)',
+    category: 'essential',
+    categoryLabel: 'Essentials',
+    description: 'Tall latte at Starbucks',
+    unit: '',
+    prices: generatePrices(5.25, 'essential', {
+      US: { localPrice: 5.25 }, GB: { localPrice: 3.85 }, DE: { localPrice: 4.55 }, FR: { localPrice: 4.90 },
+      JP: { localPrice: 490 }, AU: { localPrice: 6.00 }, CA: { localPrice: 5.75 }, CH: { localPrice: 6.50 },
+      KR: { localPrice: 5500 }, IT: { localPrice: 4.50 }, NO: { localPrice: 58 }, SG: { localPrice: 7.10 },
+      IN: { localPrice: 320 }, BR: { localPrice: 18.50 }, TH: { localPrice: 135 }, PH: { localPrice: 185 },
+      CO: { localPrice: 12000, notes: 'Major coffee producer; cheaper local brands' }, AR: { localPrice: 2500 },
+    }),
+  },
+  {
+    id: 'restaurant-meal',
+    name: 'Restaurant Meal (mid-range)',
+    category: 'service',
+    categoryLabel: 'Services',
+    description: 'Dinner for one at a mid-range restaurant with drink',
+    unit: '',
+    prices: generatePrices(25, 'service', {
+      US: { localPrice: 25 }, GB: { localPrice: 20 }, DE: { localPrice: 18 }, FR: { localPrice: 22 },
+      JP: { localPrice: 2000 }, AU: { localPrice: 30 }, CA: { localPrice: 28 }, CH: { localPrice: 45 },
+      IT: { localPrice: 20 }, ES: { localPrice: 15 }, NO: { localPrice: 350 }, SG: { localPrice: 25 },
+      IN: { localPrice: 500 }, BR: { localPrice: 60 }, TH: { localPrice: 250, notes: 'Incredible street food for a fraction' },
+      PH: { localPrice: 400 }, CO: { localPrice: 35000 }, AR: { localPrice: 8000 }, KE: { localPrice: 1500 },
+    }),
+  },
+  {
+    id: 'samsung-galaxy',
+    name: 'Samsung Galaxy S24',
+    category: 'physical',
+    categoryLabel: 'Physical Goods',
+    description: 'Samsung Galaxy S24 base model',
+    unit: '',
+    prices: generatePrices(799, 'physical', {
+      US: { localPrice: 799 }, GB: { localPrice: 799 }, DE: { localPrice: 899 }, FR: { localPrice: 899 },
+      JP: { localPrice: 124700 }, AU: { localPrice: 1299 }, CA: { localPrice: 1099 }, CH: { localPrice: 849 },
+      KR: { localPrice: 1155000, notes: 'Samsung home market; competitive pricing' }, IN: { localPrice: 74999 },
+      BR: { localPrice: 5999, importDuty: 50 }, TR: { localPrice: 42999, importDuty: 20 },
+      IT: { localPrice: 899 }, ES: { localPrice: 879 }, SG: { localPrice: 1148 },
+    }),
+  },
+  {
+    id: 'playstation-5',
+    name: 'PlayStation 5',
+    category: 'physical',
+    categoryLabel: 'Physical Goods',
+    description: 'Sony PlayStation 5 disc edition',
+    unit: '',
+    prices: generatePrices(499, 'physical', {
+      US: { localPrice: 499 }, GB: { localPrice: 479 }, DE: { localPrice: 549 }, FR: { localPrice: 549 },
+      JP: { localPrice: 66980, notes: 'Sony home market' }, AU: { localPrice: 799 }, CA: { localPrice: 649 },
+      CH: { localPrice: 529 }, IN: { localPrice: 49990 }, BR: { localPrice: 4499, importDuty: 60, notes: 'Extreme import taxes on electronics' },
+      TR: { localPrice: 21999, importDuty: 20 }, IT: { localPrice: 549 }, ES: { localPrice: 549 },
+      AR: { localPrice: 699999, importDuty: 35, notes: 'Import restrictions on electronics' },
+    }),
+  },
+  {
+    id: 'macbook-air',
+    name: 'MacBook Air M3',
+    category: 'physical',
+    categoryLabel: 'Physical Goods',
+    description: 'Apple MacBook Air M3 13-inch base model',
+    unit: '',
+    prices: generatePrices(1099, 'physical', {
+      US: { localPrice: 1099 }, GB: { localPrice: 1099 }, DE: { localPrice: 1299 }, FR: { localPrice: 1299 },
+      JP: { localPrice: 164800 }, AU: { localPrice: 1799 }, CA: { localPrice: 1549 }, CH: { localPrice: 1199 },
+      IN: { localPrice: 114900 }, BR: { localPrice: 12999, importDuty: 60 },
+      TR: { localPrice: 57999, importDuty: 25 }, SG: { localPrice: 1599 }, KR: { localPrice: 1590000 },
+    }),
+  },
+  {
+    id: 'electricity-100kwh',
+    name: 'Electricity (100 kWh)',
+    category: 'essential',
+    categoryLabel: 'Essentials',
+    description: '100 kilowatt-hours of residential electricity',
+    unit: '',
+    prices: generatePrices(14, 'essential', {
+      US: { localPrice: 14.00, importDuty: 0 }, GB: { localPrice: 28.00, importDuty: 0, notes: 'Energy crisis drove prices up significantly' },
+      DE: { localPrice: 32.00, importDuty: 0, notes: 'Energiewende surcharges; among highest in EU' },
+      FR: { localPrice: 18.50, importDuty: 0, notes: 'Nuclear power keeps prices relatively low' },
+      JP: { localPrice: 3100, importDuty: 0 }, AU: { localPrice: 28, importDuty: 0 }, CA: { localPrice: 11, importDuty: 0 },
+      NO: { localPrice: 100, importDuty: 0, notes: 'Hydroelectric; historically very cheap' },
+      IN: { localPrice: 600, importDuty: 0, notes: 'Subsidized rates for residential use' },
+      EG: { localPrice: 100, importDuty: 0, notes: 'Government-subsidized electricity' },
+      NG: { localPrice: 5000, importDuty: 0, notes: 'Unreliable grid; many use generators' },
+      KE: { localPrice: 2500, importDuty: 0 }, SG: { localPrice: 27, importDuty: 0 },
+    }),
+  },
+  {
+    id: 'water-monthly',
+    name: 'Water Bill (monthly)',
+    category: 'essential',
+    categoryLabel: 'Essentials',
+    description: 'Monthly residential water bill for average household',
+    unit: '/month',
+    prices: generatePrices(35, 'essential', {
+      US: { localPrice: 35, importDuty: 0 }, GB: { localPrice: 30, importDuty: 0 }, DE: { localPrice: 40, importDuty: 0 },
+      AU: { localPrice: 55, importDuty: 0, notes: 'Water scarcity adds to costs' },
+      CH: { localPrice: 30, importDuty: 0 }, SE: { localPrice: 200, importDuty: 0 },
+      IN: { localPrice: 300, importDuty: 0, notes: 'Highly subsidized; varies by city' },
+      EG: { localPrice: 50, importDuty: 0, notes: 'Heavily subsidized' }, NG: { localPrice: 3000, importDuty: 0 },
+      KE: { localPrice: 1500, importDuty: 0 },
+    }),
+  },
+  {
+    id: 'oil-change',
+    name: 'Car Oil Change',
+    category: 'service',
+    categoryLabel: 'Services',
+    description: 'Standard oil change at a mechanic',
+    unit: '',
+    prices: generatePrices(45, 'service', {
+      US: { localPrice: 45 }, GB: { localPrice: 55 }, DE: { localPrice: 60 }, FR: { localPrice: 55 },
+      JP: { localPrice: 5000 }, AU: { localPrice: 80 }, CA: { localPrice: 60 }, CH: { localPrice: 120 },
+      IN: { localPrice: 800 }, BR: { localPrice: 80 }, MX: { localPrice: 400 },
+      IT: { localPrice: 50 }, ES: { localPrice: 45 }, TH: { localPrice: 500 }, PH: { localPrice: 600 },
+      CO: { localPrice: 60000 }, AR: { localPrice: 12000 }, KE: { localPrice: 3000 },
+    }),
+  },
+  {
+    id: 'tire-replacement',
+    name: 'Tire Replacement (set of 4)',
+    category: 'service',
+    categoryLabel: 'Services',
+    description: 'Four mid-range tires installed',
+    unit: '',
+    prices: generatePrices(600, 'service', {
+      US: { localPrice: 600 }, GB: { localPrice: 500 }, DE: { localPrice: 480 }, FR: { localPrice: 500 },
+      JP: { localPrice: 60000 }, AU: { localPrice: 800 }, CA: { localPrice: 700 }, CH: { localPrice: 1000 },
+      IN: { localPrice: 16000 }, BR: { localPrice: 1600 }, MX: { localPrice: 6000 },
+      IT: { localPrice: 450 }, ES: { localPrice: 400 }, NO: { localPrice: 8000 }, KE: { localPrice: 40000 },
+    }),
+  },
+  {
+    id: 'lawyer-hour',
+    name: 'Lawyer Consultation (1 hr)',
+    category: 'service',
+    categoryLabel: 'Services',
+    description: 'One hour consultation with a general practice attorney',
+    unit: '/hour',
+    prices: generatePrices(250, 'service', {
+      US: { localPrice: 250, notes: 'Varies wildly: $150-$1000+/hr depending on specialty and city' },
+      GB: { localPrice: 200 }, DE: { localPrice: 180, notes: 'Regulated fee schedule (RVG) for many services' },
+      FR: { localPrice: 200 }, JP: { localPrice: 20000 }, AU: { localPrice: 300 }, CA: { localPrice: 250 },
+      CH: { localPrice: 400 }, IN: { localPrice: 3000, notes: 'Wide range: advocates charge less than top firms' },
+      BR: { localPrice: 400 }, SG: { localPrice: 350 }, NL: { localPrice: 200 }, NO: { localPrice: 2500 },
+    }),
+  },
+  {
+    id: 'spa-massage',
+    name: 'Spa Massage (1 hr)',
+    category: 'service',
+    categoryLabel: 'Services',
+    description: 'One-hour full body massage at a mid-range spa',
+    unit: '',
+    prices: generatePrices(80, 'service', {
+      US: { localPrice: 80 }, GB: { localPrice: 65 }, DE: { localPrice: 60 }, FR: { localPrice: 70 },
+      JP: { localPrice: 7000 }, AU: { localPrice: 90 }, CA: { localPrice: 85 }, CH: { localPrice: 130 },
+      TH: { localPrice: 500, notes: 'World-famous Thai massage tradition; incredible value' },
+      IN: { localPrice: 1500 }, BR: { localPrice: 150 }, PH: { localPrice: 600, notes: 'Spa tourism destination' },
+      CO: { localPrice: 80000 }, AR: { localPrice: 15000 }, KE: { localPrice: 4000 },
+      IT: { localPrice: 70 }, ES: { localPrice: 55 }, SG: { localPrice: 100 }, NO: { localPrice: 900 },
+    }),
+  },
+  {
+    id: 'car-insurance',
+    name: 'Car Insurance (annual)',
+    category: 'service',
+    categoryLabel: 'Services',
+    description: 'Annual comprehensive car insurance for average sedan',
+    unit: '/year',
+    prices: generatePrices(1500, 'service', {
+      US: { localPrice: 1500, notes: 'National average; varies massively by state' },
+      GB: { localPrice: 800 }, DE: { localPrice: 600, notes: 'Competitive market keeps prices down' },
+      FR: { localPrice: 650 }, JP: { localPrice: 80000 }, AU: { localPrice: 1200 },
+      CA: { localPrice: 1600, notes: 'Varies by province; BC most expensive' },
+      CH: { localPrice: 900 }, IN: { localPrice: 15000 }, BR: { localPrice: 3000 },
+      IT: { localPrice: 700, notes: 'Higher in south than north' },
+      ES: { localPrice: 450 }, NL: { localPrice: 500 }, NO: { localPrice: 6000 },
+      SG: { localPrice: 1800, notes: 'High due to Certificate of Entitlement system' },
+      TH: { localPrice: 12000 }, MX: { localPrice: 8000 }, AR: { localPrice: 200000 },
+    }),
+  },
+  {
+    id: 'steam-game',
+    name: 'AAA Game (Steam)',
+    category: 'digital',
+    categoryLabel: 'Digital Goods',
+    description: 'New AAA game on Steam at launch',
+    unit: '',
+    prices: generatePrices(69.99, 'digital', {
+      US: { localPrice: 69.99 }, GB: { localPrice: 59.99 }, DE: { localPrice: 69.99 }, FR: { localPrice: 69.99 },
+      JP: { localPrice: 8980 }, AU: { localPrice: 89.95 }, CA: { localPrice: 79.99 },
+      IN: { localPrice: 3999, notes: 'Significant regional pricing discount on Steam' },
+      BR: { localPrice: 279.90, notes: 'Steam regional pricing' }, TR: { localPrice: 599, notes: 'Among cheapest Steam regions' },
+      AR: { localPrice: 19999, notes: 'Historically one of cheapest Steam regions; prices rising' },
+      PL: { localPrice: 249.00 }, KR: { localPrice: 79000 }, CO: { localPrice: 189900, notes: 'Regional pricing available' },
+    }),
+  },
 ]
 
 export function getCountryByCode(code: string): Country | undefined {
@@ -574,6 +846,54 @@ export const productCategories = [
   { id: 'service', label: 'Services', icon: 'Wrench' },
   { id: 'medical', label: 'Medical', icon: 'Stethoscope' },
 ]
+
+export function getCountryComparison(countryCode: string): { product: Product; score: number; priceUSD: number; usPrice: number; ratio: number }[] {
+  return products
+    .map(product => {
+      const result = calculateFairness(product, countryCode)
+      if (!result) return null
+      return {
+        product,
+        score: result.pppScore,
+        priceUSD: result.priceUSD,
+        usPrice: result.usPrice,
+        ratio: result.pppAdjustedPrice / (result.usPrice || 1),
+      }
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null)
+    .sort((a, b) => a.score - b.score)
+}
+
+export function getGlobalStats(): { totalProducts: number; totalCountries: number; avgFairnessScore: number; mostExpensiveProduct: { product: Product; country: Country; ratio: number } | null } {
+  let worstRatio = 0
+  let worstProduct: Product | null = null
+  let worstCountry: Country | null = null
+  let totalScores = 0
+  let scoreCount = 0
+
+  for (const product of products) {
+    for (const country of countries) {
+      const result = calculateFairness(product, country.code)
+      if (result) {
+        totalScores += result.pppScore
+        scoreCount++
+        const ratio = result.pppAdjustedPrice / (result.usPrice || 1)
+        if (ratio > worstRatio) {
+          worstRatio = ratio
+          worstProduct = product
+          worstCountry = country
+        }
+      }
+    }
+  }
+
+  return {
+    totalProducts: products.length,
+    totalCountries: countries.length,
+    avgFairnessScore: scoreCount > 0 ? totalScores / scoreCount : 50,
+    mostExpensiveProduct: worstProduct && worstCountry ? { product: worstProduct, country: worstCountry, ratio: worstRatio } : null,
+  }
+}
 
 export const fairnessLenses: FairnessLens[] = [
   {

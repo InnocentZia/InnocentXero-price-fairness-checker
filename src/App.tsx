@@ -6,23 +6,24 @@ import {
   Stethoscope, ArrowRight, CheckCircle, AlertTriangle, XCircle, Info, Share2,
   Flag, MessageSquare, Zap, Eye, HelpCircle, Monitor, Package, Cloud,
   ShoppingBasket, Gamepad2, Trophy,
-  Scale, BookOpen, FileText, Home, X,
+  Scale, BookOpen, FileText, Home, X, TrendingUp, TrendingDown, MapPin,
 } from 'lucide-react'
 import {
   countries, products, productCategories, fairnessLenses,
   calculateFairness, generateQuizQuestion, getLeaderboard,
-  priceToUSD,
+  priceToUSD, getCountryComparison, getGlobalStats,
   type FairnessResult, type QuizQuestion,
 } from './data'
 
 function ScoreGauge({ score, size = 'md', label }: { score: number; size?: 'sm' | 'md' | 'lg'; label?: string }) {
+  const ariaLabel = label ? `${label}: ${Math.round(score)} out of 100` : `Score: ${Math.round(score)} out of 100`
   const color = score >= 60 ? 'text-emerald-500' : score >= 40 ? 'text-amber-500' : 'text-red-500'
   const dims = size === 'lg' ? 'w-28 h-28' : size === 'md' ? 'w-20 h-20' : 'w-14 h-14'
   const textSize = size === 'lg' ? 'text-3xl' : size === 'md' ? 'text-xl' : 'text-sm'
   const circumference = 2 * Math.PI * 40
   const offset = circumference - (score / 100) * circumference
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-1" role="meter" aria-valuenow={Math.round(score)} aria-valuemin={0} aria-valuemax={100} aria-label={ariaLabel}>
       <div className={`${dims} relative`}>
         <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
           <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" strokeWidth="8" />
@@ -55,7 +56,7 @@ function FairnessBar({ score, label, description, active }: { score: number; lab
   )
 }
 
-type TabId = 'home' | 'checker' | 'compare' | 'quiz' | 'leaderboard' | 'community' | 'methodology'
+type TabId = 'home' | 'checker' | 'compare' | 'vsworld' | 'quiz' | 'leaderboard' | 'community' | 'methodology'
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabId>('home')
@@ -76,6 +77,7 @@ function App() {
   const [communitySubmitted, setCommunitySubmitted] = useState(false)
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [vsWorldCountry, setVsWorldCountry] = useState('')
   const resultsRef = useRef<HTMLDivElement>(null)
 
   const filteredProducts = categoryFilter === 'all' ? products : products.filter(p => p.category === categoryFilter)
@@ -125,6 +127,7 @@ function App() {
     { id: 'home', label: 'Home', icon: Home },
     { id: 'checker', label: 'Price Checker', icon: Search },
     { id: 'compare', label: 'Global Compare', icon: Globe },
+    { id: 'vsworld', label: 'Your Country vs World', icon: MapPin },
     { id: 'quiz', label: 'Quiz', icon: Gamepad2 },
     { id: 'leaderboard', label: 'Leaderboard', icon: Trophy },
     { id: 'community', label: 'Community', icon: Users },
@@ -133,7 +136,8 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-200">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-indigo-600 focus:text-white focus:rounded-lg">Skip to main content</a>
+      <nav role="navigation" aria-label="Main navigation" className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <button onClick={() => setActiveTab('home')} className="flex items-center gap-2">
@@ -147,7 +151,8 @@ function App() {
                 <button
                   key={tab.id}
                   onClick={() => { setActiveTab(tab.id); setMobileMenuOpen(false) }}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}`}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:outline-none ${activeTab === tab.id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}`}
+                  aria-current={activeTab === tab.id ? 'page' : undefined}
                 >
                   {tab.label}
                 </button>
@@ -174,6 +179,7 @@ function App() {
         )}
       </nav>
 
+      <main id="main-content" role="main">
       {activeTab === 'home' && (
         <>
           <section className="relative overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-purple-50 py-20 sm:py-32">
@@ -182,7 +188,7 @@ function App() {
             <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-100 text-indigo-700 text-sm font-medium mb-8">
                 <Globe className="w-4 h-4" />
-                20 countries &middot; 20+ products &middot; Multiple fairness lenses
+                30 countries &middot; 35+ products &middot; Multiple fairness lenses
               </div>
               <h1 className="text-4xl sm:text-6xl font-extrabold text-gray-900 leading-tight">
                 Is this price fair<br />
@@ -202,8 +208,8 @@ function App() {
               </div>
               <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-3xl mx-auto">
                 {[
-                  { stat: '20', label: 'Countries' },
-                  { stat: '20+', label: 'Products & Services' },
+                  { stat: '30', label: 'Countries' },
+                  { stat: '35+', label: 'Products & Services' },
                   { stat: '4', label: 'Fairness Lenses' },
                   { stat: '100%', label: 'Transparent Scoring' },
                 ].map(item => (
@@ -346,7 +352,7 @@ function App() {
                   </div>
                 </div>
               </div>
-              <button onClick={handleCheck} disabled={!selectedProduct || !selectedCountry} className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-lg flex items-center justify-center gap-2 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+              <button onClick={handleCheck} disabled={!selectedProduct || !selectedCountry} aria-label="Analyze price fairness" className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-lg flex items-center justify-center gap-2 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                 <Search className="w-5 h-5" /> Analyze Price Fairness
               </button>
             </div>
@@ -487,7 +493,7 @@ function App() {
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-10">
               <h2 className="text-3xl font-bold text-gray-900">Global Price Comparison</h2>
-              <p className="mt-2 text-gray-600">See how one product is priced across 20 countries</p>
+              <p className="mt-2 text-gray-600">See how one product is priced across 30 countries</p>
             </div>
             <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-8">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Select a Product</label>
@@ -630,6 +636,158 @@ function App() {
               <Info className="w-5 h-5 text-indigo-500 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-indigo-700">Higher scores indicate better value for consumers. Rankings use PPP-adjusted scores, which account for local purchasing power. A high score doesn't mean "cheap" &mdash; it means prices are fair relative to what locals earn and can buy.</p>
             </div>
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'vsworld' && (
+        <section className="py-12 sm:py-20">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold text-gray-900">Your Country vs The World</h2>
+              <p className="mt-2 text-gray-600">See how your country's prices stack up across every product we track</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-8">
+              <label className="block text-sm font-semibold text-gray-700 mb-2" id="vs-country-label">Select Your Country</label>
+              <div className="relative">
+                <select aria-labelledby="vs-country-label" value={vsWorldCountry} onChange={e => setVsWorldCountry(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 appearance-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none">
+                  <option value="">Choose your country...</option>
+                  {countries.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+            {vsWorldCountry && (() => {
+              const country = countries.find(c => c.code === vsWorldCountry)
+              if (!country) return null
+              const comparison = getCountryComparison(vsWorldCountry)
+              const globalStats = getGlobalStats()
+              const avgScore = comparison.length > 0 ? comparison.reduce((sum, c) => sum + c.score, 0) / comparison.length : 50
+              const bestDeals = comparison.filter(c => c.score >= 60).sort((a, b) => b.score - a.score).slice(0, 5)
+              const worstDeals = comparison.filter(c => c.score < 40).sort((a, b) => a.score - b.score).slice(0, 5)
+              return (
+                <div className="space-y-6">
+                  <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl p-6 sm:p-8 text-white">
+                    <div className="flex flex-col sm:flex-row items-center gap-6">
+                      <div className="text-center sm:text-left flex-1">
+                        <span className="text-5xl block mb-2">{country.flag}</span>
+                        <h3 className="text-2xl font-bold">{country.name}</h3>
+                        <p className="text-white/70 text-sm mt-1">{country.region} &middot; {country.incomeGroup.replace('-', ' ')} income</p>
+                      </div>
+                      <div className="flex gap-6 text-center">
+                        <div>
+                          <p className="text-3xl font-bold">{Math.round(avgScore)}</p>
+                          <p className="text-xs text-white/70">Avg Fairness</p>
+                        </div>
+                        <div>
+                          <p className="text-3xl font-bold">{comparison.length}</p>
+                          <p className="text-xs text-white/70">Products Tracked</p>
+                        </div>
+                        <div>
+                          <p className="text-3xl font-bold">{country.vatRate}%</p>
+                          <p className="text-xs text-white/70">VAT Rate</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                      <div className="bg-white/10 rounded-xl p-3">
+                        <p className="text-xs text-white/60">Median Income</p>
+                        <p className="font-bold">${country.medianIncome.toLocaleString()}</p>
+                      </div>
+                      <div className="bg-white/10 rounded-xl p-3">
+                        <p className="text-xs text-white/60">PPP Factor</p>
+                        <p className="font-bold">{country.pppFactor}x</p>
+                      </div>
+                      <div className="bg-white/10 rounded-xl p-3">
+                        <p className="text-xs text-white/60">Cost of Living</p>
+                        <p className="font-bold">{country.costOfLivingIndex}/100</p>
+                      </div>
+                      <div className="bg-white/10 rounded-xl p-3">
+                        <p className="text-xs text-white/60">Import Duty Avg</p>
+                        <p className="font-bold">{country.importDutyAvg}%</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-6">
+                    <div className="bg-white rounded-2xl border border-emerald-200 p-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <TrendingDown className="w-5 h-5 text-emerald-600" />
+                        <h3 className="font-bold text-gray-900">Best Value Products</h3>
+                      </div>
+                      {bestDeals.length > 0 ? (
+                        <div className="space-y-3">
+                          {bestDeals.map(deal => (
+                            <div key={deal.product.id} className="flex items-center gap-3">
+                              <ScoreGauge score={deal.score} size="sm" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">{deal.product.name}</p>
+                                <p className="text-xs text-gray-500">{formatUSD(deal.priceUSD)} &middot; {deal.ratio < 1 ? `${Math.round((1 - deal.ratio) * 100)}% cheaper` : 'At parity'}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">No products scored above 60 (good value) for this country.</p>
+                      )}
+                    </div>
+                    <div className="bg-white rounded-2xl border border-red-200 p-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <TrendingUp className="w-5 h-5 text-red-600" />
+                        <h3 className="font-bold text-gray-900">Most Overpriced Products</h3>
+                      </div>
+                      {worstDeals.length > 0 ? (
+                        <div className="space-y-3">
+                          {worstDeals.map(deal => (
+                            <div key={deal.product.id} className="flex items-center gap-3">
+                              <ScoreGauge score={deal.score} size="sm" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">{deal.product.name}</p>
+                                <p className="text-xs text-gray-500">{formatUSD(deal.priceUSD)} &middot; {Math.round((deal.ratio - 1) * 100)}% more expensive</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">No products scored below 40 (overpriced) for this country.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                    <h3 className="font-bold text-gray-900 mb-4">All Products Breakdown</h3>
+                    <div className="space-y-2">
+                      {comparison.map(item => {
+                        const pct = Math.round((item.ratio - 1) * 100)
+                        return (
+                          <div key={item.product.id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                            <div className="w-40 sm:w-56 truncate text-sm font-medium text-gray-900">{item.product.name}</div>
+                            <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full transition-all ${item.score >= 60 ? 'bg-emerald-400' : item.score >= 40 ? 'bg-amber-400' : 'bg-red-400'}`} style={{ width: `${Math.min(item.score, 100)}%` }} />
+                            </div>
+                            <div className="w-12 text-right"><span className={`text-sm font-bold ${item.score >= 60 ? 'text-emerald-600' : item.score >= 40 ? 'text-amber-600' : 'text-red-600'}`}>{Math.round(item.score)}</span></div>
+                            <div className="w-28 text-right text-xs text-gray-500">{pct > 0 ? `+${pct}%` : pct === 0 ? 'At parity' : `${pct}%`} vs US</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border border-indigo-100 p-6 text-center">
+                    <p className="text-sm text-indigo-700 mb-3">Share this comparison with friends</p>
+                    <div className="bg-white rounded-xl border border-indigo-200 p-5 max-w-sm mx-auto">
+                      <div className="flex items-center gap-2 justify-center mb-2"><Shield className="w-4 h-4 text-indigo-600" /><span className="font-bold text-indigo-600 text-sm">FairPrice</span></div>
+                      <span className="text-3xl">{country.flag}</span>
+                      <p className="font-bold text-gray-900 mt-1">{country.name}</p>
+                      <p className="text-2xl font-bold mt-2">{Math.round(avgScore)}<span className="text-sm font-normal text-gray-400">/100</span></p>
+                      <p className="text-xs text-gray-500 mt-1">Average fairness score across {comparison.length} products</p>
+                      <p className="text-xs text-gray-400 mt-2">Global avg: {Math.round(globalStats.avgFairnessScore)} &middot; {globalStats.totalCountries} countries &middot; {globalStats.totalProducts} products</p>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-3">Screenshot this card to share on social media</p>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         </section>
       )}
@@ -779,7 +937,8 @@ function App() {
         </section>
       )}
 
-      <footer className="bg-gray-900 text-gray-400 py-16">
+      </main>
+      <footer role="contentinfo" aria-label="Site footer" className="bg-gray-900 text-gray-400 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8 mb-12">
             <div className="md:col-span-2">
