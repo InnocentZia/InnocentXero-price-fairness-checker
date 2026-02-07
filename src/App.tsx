@@ -205,7 +205,7 @@ function App() {
             <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-100 text-indigo-700 text-sm font-medium mb-8">
                 <Globe className="w-4 h-4" />
-                30 countries &middot; 35+ products &middot; Multiple fairness lenses
+                30 countries &middot; 100+ products &middot; Multiple fairness lenses
               </div>
               <h1 className="text-4xl sm:text-6xl font-extrabold text-gray-900 leading-tight">
                 Is this price fair<br />
@@ -226,7 +226,7 @@ function App() {
               <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-3xl mx-auto">
                 {[
                   { stat: '30', label: 'Countries' },
-                  { stat: '35+', label: 'Products & Services' },
+                  { stat: '100+', label: 'Products & Services' },
                   { stat: '4', label: 'Fairness Lenses' },
                   { stat: '100%', label: 'Transparent Scoring' },
                 ].map(item => (
