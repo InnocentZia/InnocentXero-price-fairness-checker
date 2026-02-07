@@ -370,23 +370,59 @@ function App() {
                       <button onClick={() => setShowMethodology(!showMethodology)} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-600 text-sm font-medium flex items-center gap-1.5 hover:bg-gray-200 transition-all"><HelpCircle className="w-4 h-4" /> How we score</button>
                     </div>
                   </div>
+                  {(() => {
+                    const pctVsGlobal = Math.round(((fairnessResult.priceUSD / fairnessResult.globalMedianUSD) - 1) * 100)
+                    const pctVsUS = Math.round(((fairnessResult.priceUSD / fairnessResult.usPrice) - 1) * 100)
+                    const countriesWithProduct = countries.filter(c => selectedProductData.prices[c.code])
+                    const cheaperCount = countriesWithProduct.filter(c => {
+                      const p = selectedProductData.prices[c.code]
+                      if (!p) return false
+                      const usd = p.localPrice / c.exchangeRate
+                      return usd < fairnessResult.priceUSD
+                    }).length
+                    const percentile = Math.round((cheaperCount / countriesWithProduct.length) * 100)
+                    const isAboveGlobal = pctVsGlobal > 5
+                    const isBelowGlobal = pctVsGlobal < -5
+                    return (
+                      <div className={`p-5 rounded-xl mb-6 ${isAboveGlobal ? 'bg-red-50 border border-red-200' : isBelowGlobal ? 'bg-emerald-50 border border-emerald-200' : 'bg-blue-50 border border-blue-200'}`}>
+                        <p className={`text-lg sm:text-xl font-bold ${isAboveGlobal ? 'text-red-800' : isBelowGlobal ? 'text-emerald-800' : 'text-blue-800'}`}>
+                          {isAboveGlobal
+                            ? `This price is ${Math.abs(pctVsGlobal)}% higher than the global median`
+                            : isBelowGlobal
+                            ? `This price is ${Math.abs(pctVsGlobal)}% lower than the global median`
+                            : 'This price is close to the global median'}
+                        </p>
+                        <div className="flex flex-wrap gap-x-6 gap-y-1 mt-2">
+                          <p className="text-sm text-gray-600">
+                            {pctVsUS > 0 ? `${pctVsUS}% more` : pctVsUS < 0 ? `${Math.abs(pctVsUS)}% less` : 'Same'} than the US price
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            You pay more than {percentile}% of the world
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })()}
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     <div className="p-4 rounded-xl bg-gray-50 text-center">
                       <p className="text-xs text-gray-500 mb-1">Your Price (USD)</p>
                       <p className="text-xl font-bold text-gray-900">{formatUSD(fairnessResult.priceUSD)}</p>
+                      <p className="text-xs text-gray-400 mt-1">{selectedCountryData.currencySymbol}{selectedProductData.prices[selectedCountry].localPrice.toLocaleString()} local</p>
                     </div>
                     <div className="p-4 rounded-xl bg-gray-50 text-center">
                       <p className="text-xs text-gray-500 mb-1">US Price</p>
                       <p className="text-xl font-bold text-indigo-600">{formatUSD(fairnessResult.usPrice)}</p>
+                      <p className="text-xs text-gray-400 mt-1">Baseline reference</p>
                     </div>
                     <div className="p-4 rounded-xl bg-gray-50 text-center">
                       <p className="text-xs text-gray-500 mb-1">Global Median</p>
                       <p className="text-xl font-bold text-purple-600">{formatUSD(fairnessResult.globalMedianUSD)}</p>
+                      <p className="text-xs text-gray-400 mt-1">Across {countries.filter(c => selectedProductData.prices[c.code]).length} countries</p>
                     </div>
                     <div className="p-4 rounded-xl bg-gray-50 text-center">
                       <p className="text-xs text-gray-500 mb-1">% of Median Income</p>
                       <p className="text-xl font-bold text-gray-900">{fairnessResult.incomePercentage.toFixed(2)}%</p>
-                      <p className="text-xs text-gray-400">(US: {fairnessResult.usIncomePercentage.toFixed(2)}%)</p>
+                      <p className="text-xs text-gray-400 mt-1">(US: {fairnessResult.usIncomePercentage.toFixed(2)}%)</p>
                     </div>
                   </div>
                   <div className="mb-6">
@@ -425,6 +461,80 @@ function App() {
                     </div>
                   </div>
                 )}
+
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
+                  <h3 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2"><Zap className="w-5 h-5 text-amber-500" /> How to Pay Less</h3>
+                  <p className="text-sm text-gray-500 mb-4">Actionable tips based on the product category and your country</p>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {selectedProductData.category === 'digital' && (
+                      <>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Check regional pricing</p><p className="text-xs text-blue-700 mt-0.5">Many digital services offer different tiers or pricing by region. Check if a regional plan is available.</p></div>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Annual vs monthly</p><p className="text-xs text-blue-700 mt-0.5">Annual plans typically save 15-30% vs monthly billing.</p></div>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Student / education discounts</p><p className="text-xs text-blue-700 mt-0.5">Many digital services offer 40-70% off for students and educators.</p></div>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Wait for sales events</p><p className="text-xs text-blue-700 mt-0.5">Black Friday, regional holidays, and launch promotions often have significant discounts.</p></div>
+                      </>
+                    )}
+                    {selectedProductData.category === 'physical' && (
+                      <>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Compare authorized retailers</p><p className="text-xs text-blue-700 mt-0.5">Prices can vary 5-15% between authorized retailers in the same country.</p></div>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Consider previous models</p><p className="text-xs text-blue-700 mt-0.5">Last-generation products often offer 90% of the value at 60% of the price.</p></div>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Tax-free shopping</p><p className="text-xs text-blue-700 mt-0.5">Travelers can often claim VAT refunds on purchases. Check local rules.</p></div>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Seasonal sales</p><p className="text-xs text-blue-700 mt-0.5">Electronics drop 15-30% during launch cycles and holiday sales.</p></div>
+                      </>
+                    )}
+                    {selectedProductData.category === 'saas' && (
+                      <>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Negotiate enterprise pricing</p><p className="text-xs text-blue-700 mt-0.5">B2B tools often have unlisted pricing for larger teams. Always ask.</p></div>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Open-source alternatives</p><p className="text-xs text-blue-700 mt-0.5">Many SaaS tools have capable free alternatives (e.g., Jitsi for Zoom).</p></div>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Startup / nonprofit programs</p><p className="text-xs text-blue-700 mt-0.5">Many SaaS companies offer free or discounted tiers for startups and nonprofits.</p></div>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Annual commitment</p><p className="text-xs text-blue-700 mt-0.5">Annual billing typically saves 20-40% over monthly plans.</p></div>
+                      </>
+                    )}
+                    {selectedProductData.category === 'essential' && (
+                      <>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Buy local / seasonal</p><p className="text-xs text-blue-700 mt-0.5">Locally produced essentials avoid import costs and are often fresher.</p></div>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Buy in bulk</p><p className="text-xs text-blue-700 mt-0.5">Wholesale or bulk purchases often reduce per-unit cost by 15-30%.</p></div>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Government subsidies</p><p className="text-xs text-blue-700 mt-0.5">Check if your country offers subsidies or price caps on essential goods.</p></div>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Store brands</p><p className="text-xs text-blue-700 mt-0.5">Store-brand versions of essentials are typically 20-40% cheaper with comparable quality.</p></div>
+                      </>
+                    )}
+                    {selectedProductData.category === 'service' && (
+                      <>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Get multiple quotes</p><p className="text-xs text-blue-700 mt-0.5">Service prices vary enormously. Always get 3+ quotes before committing.</p></div>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Off-peak timing</p><p className="text-xs text-blue-700 mt-0.5">Many services cost less during off-peak hours, weekdays, or slower seasons.</p></div>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Bundle services</p><p className="text-xs text-blue-700 mt-0.5">Bundling multiple services with one provider often yields package discounts.</p></div>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Negotiate</p><p className="text-xs text-blue-700 mt-0.5">Show competing quotes. Many service providers will match or beat competitors.</p></div>
+                      </>
+                    )}
+                    {selectedProductData.category === 'medical' && (
+                      <>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Check public healthcare</p><p className="text-xs text-blue-700 mt-0.5">Many countries offer subsidized or free medical services through public healthcare systems.</p></div>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Compare facilities</p><p className="text-xs text-blue-700 mt-0.5">Prices for the same procedure can vary 3-5x between facilities in the same city.</p></div>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Ask for cash prices</p><p className="text-xs text-blue-700 mt-0.5">Many providers offer 20-50% discounts for upfront cash payment.</p></div>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100"><p className="text-sm font-medium text-blue-900">Medical tourism</p><p className="text-xs text-blue-700 mt-0.5">For major procedures, accredited hospitals abroad can save 50-80%.</p></div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><Info className="w-5 h-5 text-indigo-600" /> Data Transparency</h3>
+                  <div className="grid sm:grid-cols-3 gap-4 text-center">
+                    <div className="p-3 rounded-lg bg-gray-50">
+                      <p className="text-xs text-gray-500">Countries Tracked</p>
+                      <p className="font-bold text-gray-900">{countries.filter(c => selectedProductData.prices[c.code]).length}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-gray-50">
+                      <p className="text-xs text-gray-500">Data Source</p>
+                      <p className="font-bold text-gray-900 text-sm">Official + Community</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-gray-50">
+                      <p className="text-xs text-gray-500">Last Updated</p>
+                      <p className="font-bold text-gray-900 text-sm">Jan 2025</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-3 text-center">Sources: Brand websites, government price databases, consumer indices, community reports</p>
+                </div>
 
                 <div className="bg-amber-50 rounded-2xl border border-amber-200 p-5 flex items-start gap-3">
                   <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
@@ -468,17 +578,21 @@ function App() {
                         <h3 className="text-xl font-bold text-gray-900">Share This Result</h3>
                         <button onClick={() => setShareModalOpen(false)} className="p-2 rounded-lg hover:bg-gray-100"><X className="w-5 h-5" /></button>
                       </div>
-                      <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl p-6 text-white mb-6">
-                        <div className="flex items-center gap-2 mb-3"><Shield className="w-5 h-5" /><span className="font-bold">FairPrice</span></div>
-                        <p className="text-2xl font-bold mb-1">{selectedProductData.name}</p>
-                        <p className="text-white/80 text-sm mb-4">{selectedCountryData.flag} {selectedCountryData.name}</p>
-                        <div className="flex items-center gap-4">
-                          <div><p className="text-xs text-white/60">Local Price</p><p className="font-bold">{selectedCountryData.currencySymbol}{selectedProductData.prices[selectedCountry].localPrice.toLocaleString()}</p></div>
-                          <div><p className="text-xs text-white/60">US Price</p><p className="font-bold">{formatUSD(fairnessResult.usPrice)}</p></div>
-                          <div><p className="text-xs text-white/60">Fairness</p><p className="font-bold text-xl">{Math.round(getScoreForLens(fairnessResult, activeLens))}/100</p></div>
+                      <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl p-6 text-white mb-4">
+                        <div className="flex items-center gap-2 mb-4"><Shield className="w-5 h-5" /><span className="font-bold">FairPrice</span></div>
+                        <p className="text-xl font-bold">{selectedProductData.name}</p>
+                        <p className="text-white/70 text-sm mb-4">{selectedCountryData.flag} {selectedCountryData.name}</p>
+                        <div className="bg-white/15 rounded-lg p-4 mb-4 text-center">
+                          <p className="text-3xl font-extrabold">{(() => { const pct = Math.round(((fairnessResult.priceUSD / fairnessResult.globalMedianUSD) - 1) * 100); return pct > 0 ? `${pct}% above` : pct < 0 ? `${Math.abs(pct)}% below` : 'At' })()}</p>
+                          <p className="text-sm text-white/70">the global median price</p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3 text-center">
+                          <div className="bg-white/10 rounded-lg p-2"><p className="text-xs text-white/60">Local</p><p className="font-bold text-sm">{selectedCountryData.currencySymbol}{selectedProductData.prices[selectedCountry].localPrice.toLocaleString()}</p></div>
+                          <div className="bg-white/10 rounded-lg p-2"><p className="text-xs text-white/60">US</p><p className="font-bold text-sm">{formatUSD(fairnessResult.usPrice)}</p></div>
+                          <div className="bg-white/10 rounded-lg p-2"><p className="text-xs text-white/60">Score</p><p className="font-bold text-sm">{Math.round(getScoreForLens(fairnessResult, activeLens))}/100</p></div>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-500 text-center">Screenshot this card and share on social media</p>
+                      <p className="text-xs text-gray-400 text-center">Screenshot this card and share on social media</p>
                     </div>
                   </div>
                 )}
