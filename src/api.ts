@@ -5,11 +5,21 @@ export interface ApiProduct {
   name: string
   category: string
   category_label: string
+  subcategory: string
+  brand: string
+  category_path: string
   description: string
   unit: string
   base_usd_price: number
   created_at: string
   updated_at: string
+}
+
+export interface ApiCategory {
+  id: string
+  label: string
+  subcategories: string[]
+  brands: string[]
 }
 
 export interface ApiCountry {
@@ -54,13 +64,37 @@ export interface ApiFairnessResult {
   total_countries: number
 }
 
-export async function fetchProducts(category?: string, search?: string): Promise<{ products: ApiProduct[]; total: number }> {
+export async function fetchProducts(category?: string, search?: string, subcategory?: string, brand?: string): Promise<{ products: ApiProduct[]; total: number }> {
   const params = new URLSearchParams()
   if (category) params.set('category', category)
+  if (subcategory) params.set('subcategory', subcategory)
+  if (brand) params.set('brand', brand)
   if (search) params.set('search', search)
   params.set('limit', '500')
   const res = await fetch(`${API_BASE}/api/products?${params}`)
   if (!res.ok) throw new Error('Failed to fetch products')
+  return res.json()
+}
+
+export async function fetchCategories(): Promise<{ categories: ApiCategory[] }> {
+  const res = await fetch(`${API_BASE}/api/categories`)
+  if (!res.ok) throw new Error('Failed to fetch categories')
+  return res.json()
+}
+
+export async function fetchBrands(category?: string): Promise<{ brands: string[] }> {
+  const params = new URLSearchParams()
+  if (category) params.set('category', category)
+  const res = await fetch(`${API_BASE}/api/brands?${params}`)
+  if (!res.ok) throw new Error('Failed to fetch brands')
+  return res.json()
+}
+
+export async function fetchSubcategories(category?: string): Promise<{ subcategories: string[] }> {
+  const params = new URLSearchParams()
+  if (category) params.set('category', category)
+  const res = await fetch(`${API_BASE}/api/subcategories?${params}`)
+  if (!res.ok) throw new Error('Failed to fetch subcategories')
   return res.json()
 }
 

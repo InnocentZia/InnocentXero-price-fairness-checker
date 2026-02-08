@@ -64,6 +64,8 @@ function App() {
   const [selectedProduct, setSelectedProduct] = useState('')
   const [selectedCountry, setSelectedCountry] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
+  const [subcategoryFilter, setSubcategoryFilter] = useState('')
+  const [brandFilter, setBrandFilter] = useState('')
   const [activeLens, setActiveLens] = useState('ppp')
   const [fairnessResult, setFairnessResult] = useState<FairnessResult | null>(null)
   const [showMethodology, setShowMethodology] = useState(false)
@@ -90,7 +92,11 @@ function App() {
   const countryDropdownRef = useRef<HTMLDivElement>(null)
 
   const categoryProducts = categoryFilter === 'all' ? products : products.filter(p => p.category === categoryFilter)
-  const filteredProducts = productSearch ? categoryProducts.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()) || p.categoryLabel.toLowerCase().includes(productSearch.toLowerCase())) : categoryProducts
+  const subcatProducts = subcategoryFilter ? categoryProducts.filter(p => p.subcategory === subcategoryFilter) : categoryProducts
+  const brandProducts = brandFilter ? subcatProducts.filter(p => p.brand === brandFilter) : subcatProducts
+  const filteredProducts = productSearch ? brandProducts.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()) || p.categoryLabel.toLowerCase().includes(productSearch.toLowerCase()) || p.brand.toLowerCase().includes(productSearch.toLowerCase()) || p.subcategory.toLowerCase().includes(productSearch.toLowerCase())) : brandProducts
+  const availableSubcategories = [...new Set(categoryProducts.map(p => p.subcategory).filter(Boolean))].sort()
+  const availableBrands = [...new Set((subcategoryFilter ? subcatProducts : categoryProducts).map(p => p.brand).filter(Boolean))].sort()
   const filteredCountries = countrySearch ? countries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())) : countries
   const selectedProductData = products.find(p => p.id === selectedProduct)
   const selectedCountryData = countries.find(c => c.code === selectedCountry)
@@ -348,7 +354,7 @@ function App() {
                   {productCategories.map(cat => (
                     <button
                       key={cat.id}
-                      onClick={() => { setCategoryFilter(cat.id); setSelectedProduct('') }}
+                      onClick={() => { setCategoryFilter(cat.id); setSubcategoryFilter(''); setBrandFilter(''); setSelectedProduct('') }}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${categoryFilter === cat.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                     >
                       {cat.label}
@@ -356,6 +362,52 @@ function App() {
                   ))}
                 </div>
               </div>
+
+              {categoryFilter !== 'all' && (availableSubcategories.length > 0 || availableBrands.length > 0) && (
+                <div className="mb-6 flex flex-wrap gap-4">
+                  {availableSubcategories.length > 0 && (
+                    <div className="flex-1 min-w-48">
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Subcategory</label>
+                      <select
+                        value={subcategoryFilter}
+                        onChange={e => { setSubcategoryFilter(e.target.value); setBrandFilter(''); setSelectedProduct('') }}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      >
+                        <option value="">All subcategories</option>
+                        {availableSubcategories.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {availableBrands.length > 0 && (
+                    <div className="flex-1 min-w-48">
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Brand</label>
+                      <select
+                        value={brandFilter}
+                        onChange={e => { setBrandFilter(e.target.value); setSelectedProduct('') }}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      >
+                        <option value="">All brands</option>
+                        {availableBrands.map(b => <option key={b} value={b}>{b}</option>)}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selectedProductData && selectedProductData.categoryPath && (
+                <div className="mb-4 flex items-center gap-1.5 text-sm text-gray-500">
+                  {selectedProductData.categoryPath.split(' > ').map((part, i, arr) => (
+                    <span key={i} className="flex items-center gap-1.5">
+                      <span className={i === arr.length - 1 ? 'font-medium text-indigo-600' : 'hover:text-gray-700'}>{part}</span>
+                      {i < arr.length - 1 && <ChevronDown className="w-3 h-3 -rotate-90" />}
+                    </span>
+                  ))}
+                  {selectedProductData.brand && (
+                    <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-100 text-xs font-medium text-gray-600">{selectedProductData.brand}</span>
+                  )}
+                </div>
+              )}
+
               <div className="grid sm:grid-cols-2 gap-6 mb-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Product / Service</label>
@@ -383,8 +435,11 @@ function App() {
                           <div className="px-4 py-3 text-sm text-gray-500">No products found</div>
                         ) : filteredProducts.map(p => (
                           <button key={p.id} onClick={() => { setSelectedProduct(p.id); setProductSearch(''); setProductDropdownOpen(false) }} className={`w-full text-left px-4 py-2.5 text-sm hover:bg-indigo-50 flex justify-between items-center ${selectedProduct === p.id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700'}`}>
-                            <span>{p.name}</span>
-                            <span className="text-xs text-gray-400 ml-2">{p.categoryLabel}</span>
+                            <span className="flex items-center gap-2">
+                              <span>{p.name}</span>
+                              {p.brand && <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{p.brand}</span>}
+                            </span>
+                            <span className="text-xs text-gray-400 ml-2 shrink-0">{p.subcategory || p.categoryLabel}</span>
                           </button>
                         ))}
                       </div>

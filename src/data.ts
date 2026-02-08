@@ -29,6 +29,9 @@ export interface Product {
   name: string
   category: 'digital' | 'physical' | 'saas' | 'essential' | 'service' | 'medical'
   categoryLabel: string
+  subcategory: string
+  brand: string
+  categoryPath: string
   description: string
   unit: string
   prices: Record<string, ProductPrice>
@@ -140,6 +143,9 @@ export const products: Product[] = [
     name: 'Netflix Standard',
     category: 'digital',
     categoryLabel: 'Digital Goods',
+    subcategory: 'Streaming Video',
+    brand: 'Netflix',
+    categoryPath: 'Digital Goods > Streaming Video',
     description: 'Monthly Netflix Standard subscription',
     unit: '/month',
     prices: generatePrices(15.49, 'digital', {
@@ -154,6 +160,9 @@ export const products: Product[] = [
     name: 'Spotify Premium',
     category: 'digital',
     categoryLabel: 'Digital Goods',
+    subcategory: 'Streaming Music',
+    brand: 'Spotify',
+    categoryPath: 'Digital Goods > Streaming Music',
     description: 'Monthly Spotify Premium individual plan',
     unit: '/month',
     prices: generatePrices(11.99, 'digital', {
@@ -168,6 +177,9 @@ export const products: Product[] = [
     name: 'Adobe Creative Cloud',
     category: 'digital',
     categoryLabel: 'Digital Goods',
+    subcategory: 'Software',
+    brand: 'Adobe',
+    categoryPath: 'Digital Goods > Software',
     description: 'Monthly Adobe Creative Cloud all-apps subscription',
     unit: '/month',
     prices: generatePrices(59.99, 'digital', {
@@ -181,6 +193,9 @@ export const products: Product[] = [
     name: 'iPhone 15 (128GB)',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Smartphones',
+    brand: 'Apple',
+    categoryPath: 'Physical Goods > Smartphones',
     description: 'Apple iPhone 15 base model',
     unit: '',
     prices: generatePrices(799, 'physical', {
@@ -195,6 +210,9 @@ export const products: Product[] = [
     name: 'Big Mac',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Fast Food',
+    brand: "McDonald's",
+    categoryPath: 'Essentials > Fast Food',
     description: 'McDonald\'s Big Mac hamburger',
     unit: '',
     prices: generatePrices(5.69, 'essential', {
@@ -210,6 +228,9 @@ export const products: Product[] = [
     name: 'Nike Air Max 90',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Footwear',
+    brand: 'Nike',
+    categoryPath: 'Physical Goods > Footwear',
     description: 'Nike Air Max 90 sneakers',
     unit: '',
     prices: generatePrices(130, 'physical', {
@@ -224,6 +245,9 @@ export const products: Product[] = [
     name: 'Levi\'s 501 Jeans',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Clothing',
+    brand: "Levi's",
+    categoryPath: 'Physical Goods > Clothing',
     description: 'Levi\'s 501 Original Fit Jeans',
     unit: '',
     prices: generatePrices(70, 'physical', {
@@ -237,6 +261,9 @@ export const products: Product[] = [
     name: 'Slack Business+',
     category: 'saas',
     categoryLabel: 'SaaS / B2B',
+    subcategory: 'Communication',
+    brand: 'Slack',
+    categoryPath: 'SaaS > Communication',
     description: 'Slack Business+ per user per month',
     unit: '/user/month',
     prices: generatePrices(12.50, 'saas', {
@@ -250,6 +277,9 @@ export const products: Product[] = [
     name: 'Zoom Workplace Pro',
     category: 'saas',
     categoryLabel: 'SaaS / B2B',
+    subcategory: 'Communication',
+    brand: 'Zoom',
+    categoryPath: 'SaaS > Communication',
     description: 'Zoom Pro monthly subscription',
     unit: '/month',
     prices: generatePrices(13.33, 'saas', {
@@ -262,6 +292,9 @@ export const products: Product[] = [
     name: 'Milk (1 liter)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Dairy',
+    brand: '',
+    categoryPath: 'Essentials > Dairy',
     description: 'One liter of whole milk',
     unit: '',
     prices: generatePrices(1.10, 'essential', {
@@ -276,6 +309,9 @@ export const products: Product[] = [
     name: 'Gasoline (1 liter)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Fuel',
+    brand: '',
+    categoryPath: 'Essentials > Fuel',
     description: 'One liter of regular gasoline',
     unit: '',
     prices: generatePrices(0.95, 'essential', {
@@ -293,6 +329,9 @@ export const products: Product[] = [
     name: 'Internet Plan (100 Mbps)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'General Services',
+    brand: '',
+    categoryPath: 'Services > General Services',
     description: 'Monthly broadband internet, ~100 Mbps',
     unit: '/month',
     prices: generatePrices(65, 'service', {
@@ -310,6 +349,9 @@ export const products: Product[] = [
     name: 'Plumber (per hour)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Home Services',
+    brand: '',
+    categoryPath: 'Services > Home Services',
     description: 'Licensed plumber hourly rate',
     unit: '/hour',
     prices: generatePrices(85, 'service', {
@@ -323,6 +365,9 @@ export const products: Product[] = [
     name: 'Gym Membership',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Fitness',
+    brand: '',
+    categoryPath: 'Services > Fitness',
     description: 'Monthly gym membership, mid-range',
     unit: '/month',
     prices: generatePrices(50, 'service', {
@@ -336,6 +381,9 @@ export const products: Product[] = [
     name: 'Haircut',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Beauty',
+    brand: '',
+    categoryPath: 'Services > Beauty',
     description: 'Standard men\'s haircut at a mid-range salon',
     unit: '',
     prices: generatePrices(25, 'service', {
@@ -349,6 +397,9 @@ export const products: Product[] = [
     name: 'MRI Scan',
     category: 'medical',
     categoryLabel: 'Medical',
+    subcategory: 'Imaging',
+    brand: '',
+    categoryPath: 'Medical > Imaging',
     description: 'Brain MRI scan without contrast',
     unit: '',
     prices: generatePrices(2600, 'medical', {
@@ -370,6 +421,9 @@ export const products: Product[] = [
     name: 'Dental Cleaning',
     category: 'medical',
     categoryLabel: 'Medical',
+    subcategory: 'Dental',
+    brand: '',
+    categoryPath: 'Medical > Dental',
     description: 'Professional dental cleaning (prophylaxis)',
     unit: '',
     prices: generatePrices(200, 'medical', {
@@ -385,6 +439,9 @@ export const products: Product[] = [
     name: 'Doctor Visit (GP)',
     category: 'medical',
     categoryLabel: 'Medical',
+    subcategory: 'Consultations',
+    brand: '',
+    categoryPath: 'Medical > Consultations',
     description: 'Standard general practitioner consultation',
     unit: '',
     prices: generatePrices(150, 'medical', {
@@ -404,6 +461,9 @@ export const products: Product[] = [
     name: 'University Tuition (Annual)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Education',
+    brand: '',
+    categoryPath: 'Services > Education',
     description: 'Annual tuition at a public university (domestic students)',
     unit: '/year',
     prices: generatePrices(10000, 'service', {
@@ -426,6 +486,9 @@ export const products: Product[] = [
     name: '1-Bedroom Apartment (City Center)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Housing',
+    brand: '',
+    categoryPath: 'Services > Housing',
     description: 'Monthly rent for a 1-bedroom apartment in city center',
     unit: '/month',
     prices: generatePrices(1800, 'service', {
@@ -444,6 +507,9 @@ export const products: Product[] = [
     name: 'Rice (1 kg)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Grains',
+    brand: '',
+    categoryPath: 'Essentials > Grains',
     description: 'One kilogram of white rice',
     unit: '',
     prices: generatePrices(1.80, 'essential', {
@@ -460,6 +526,9 @@ export const products: Product[] = [
     name: 'Eggs (dozen)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Protein',
+    brand: '',
+    categoryPath: 'Essentials > Protein',
     description: 'One dozen large eggs',
     unit: '',
     prices: generatePrices(3.50, 'essential', {
@@ -474,6 +543,9 @@ export const products: Product[] = [
     name: 'Bread (loaf)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Grains',
+    brand: '',
+    categoryPath: 'Essentials > Grains',
     description: 'Standard white bread loaf (~500g)',
     unit: '',
     prices: generatePrices(3.00, 'essential', {
@@ -488,6 +560,9 @@ export const products: Product[] = [
     name: 'Chicken Breast (1 kg)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Protein',
+    brand: '',
+    categoryPath: 'Essentials > Protein',
     description: 'One kilogram of boneless chicken breast',
     unit: '',
     prices: generatePrices(8.50, 'essential', {
@@ -502,6 +577,9 @@ export const products: Product[] = [
     name: 'Starbucks Latte (tall)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Beverages',
+    brand: 'Starbucks',
+    categoryPath: 'Essentials > Beverages',
     description: 'Tall latte at Starbucks',
     unit: '',
     prices: generatePrices(5.25, 'essential', {
@@ -517,6 +595,9 @@ export const products: Product[] = [
     name: 'Restaurant Meal (mid-range)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Dining',
+    brand: '',
+    categoryPath: 'Services > Dining',
     description: 'Dinner for one at a mid-range restaurant with drink',
     unit: '',
     prices: generatePrices(25, 'service', {
@@ -532,6 +613,9 @@ export const products: Product[] = [
     name: 'Samsung Galaxy S24',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Smartphones',
+    brand: 'Samsung',
+    categoryPath: 'Physical Goods > Smartphones',
     description: 'Samsung Galaxy S24 base model',
     unit: '',
     prices: generatePrices(799, 'physical', {
@@ -547,6 +631,9 @@ export const products: Product[] = [
     name: 'PlayStation 5',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Gaming Consoles',
+    brand: 'Sony',
+    categoryPath: 'Physical Goods > Gaming Consoles',
     description: 'Sony PlayStation 5 disc edition',
     unit: '',
     prices: generatePrices(499, 'physical', {
@@ -562,6 +649,9 @@ export const products: Product[] = [
     name: 'MacBook Air M3',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Laptops',
+    brand: 'Apple',
+    categoryPath: 'Physical Goods > Laptops',
     description: 'Apple MacBook Air M3 13-inch base model',
     unit: '',
     prices: generatePrices(1099, 'physical', {
@@ -576,6 +666,9 @@ export const products: Product[] = [
     name: 'Electricity (100 kWh)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Utilities',
+    brand: '',
+    categoryPath: 'Essentials > Utilities',
     description: '100 kilowatt-hours of residential electricity',
     unit: '',
     prices: generatePrices(14, 'essential', {
@@ -595,6 +688,9 @@ export const products: Product[] = [
     name: 'Water Bill (monthly)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Beverages',
+    brand: '',
+    categoryPath: 'Essentials > Beverages',
     description: 'Monthly residential water bill for average household',
     unit: '/month',
     prices: generatePrices(35, 'essential', {
@@ -611,6 +707,9 @@ export const products: Product[] = [
     name: 'Car Oil Change',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Auto Services',
+    brand: '',
+    categoryPath: 'Services > Auto Services',
     description: 'Standard oil change at a mechanic',
     unit: '',
     prices: generatePrices(45, 'service', {
@@ -626,6 +725,9 @@ export const products: Product[] = [
     name: 'Tire Replacement (set of 4)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Auto Services',
+    brand: '',
+    categoryPath: 'Services > Auto Services',
     description: 'Four mid-range tires installed',
     unit: '',
     prices: generatePrices(600, 'service', {
@@ -640,6 +742,9 @@ export const products: Product[] = [
     name: 'Lawyer Consultation (1 hr)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Professional',
+    brand: '',
+    categoryPath: 'Services > Professional',
     description: 'One hour consultation with a general practice attorney',
     unit: '/hour',
     prices: generatePrices(250, 'service', {
@@ -655,6 +760,9 @@ export const products: Product[] = [
     name: 'Spa Massage (1 hr)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Beauty',
+    brand: '',
+    categoryPath: 'Services > Beauty',
     description: 'One-hour full body massage at a mid-range spa',
     unit: '',
     prices: generatePrices(80, 'service', {
@@ -671,6 +779,9 @@ export const products: Product[] = [
     name: 'Car Insurance (annual)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Insurance',
+    brand: '',
+    categoryPath: 'Services > Insurance',
     description: 'Annual comprehensive car insurance for average sedan',
     unit: '/year',
     prices: generatePrices(1500, 'service', {
@@ -690,6 +801,9 @@ export const products: Product[] = [
     name: 'AAA Game (Steam)',
     category: 'digital',
     categoryLabel: 'Digital Goods',
+    subcategory: 'Gaming',
+    brand: '',
+    categoryPath: 'Digital Goods > Gaming',
     description: 'New AAA game on Steam at launch',
     unit: '',
     prices: generatePrices(69.99, 'digital', {
@@ -707,6 +821,9 @@ export const products: Product[] = [
     name: 'iPad Air',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Tablets',
+    brand: 'Apple',
+    categoryPath: 'Physical Goods > Tablets',
     description: 'Apple iPad Air M2 (256GB)',
     unit: '',
     prices: generatePrices(599, 'physical', {
@@ -719,6 +836,9 @@ export const products: Product[] = [
     name: 'AirPods Pro 2',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Audio',
+    brand: 'Apple',
+    categoryPath: 'Physical Goods > Audio',
     description: 'Apple AirPods Pro 2nd generation',
     unit: '',
     prices: generatePrices(249, 'physical', {
@@ -731,6 +851,9 @@ export const products: Product[] = [
     name: 'Nintendo Switch OLED',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Gaming Consoles',
+    brand: 'Nintendo',
+    categoryPath: 'Physical Goods > Gaming Consoles',
     description: 'Nintendo Switch OLED model',
     unit: '',
     prices: generatePrices(349, 'physical', {
@@ -743,6 +866,9 @@ export const products: Product[] = [
     name: '55" Smart TV (Samsung)',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'TVs & Displays',
+    brand: 'Samsung',
+    categoryPath: 'Physical Goods > TVs & Displays',
     description: 'Samsung 55-inch 4K Smart TV',
     unit: '',
     prices: generatePrices(450, 'physical', {
@@ -755,6 +881,9 @@ export const products: Product[] = [
     name: 'Budget Laptop (Chromebook)',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Laptops',
+    brand: '',
+    categoryPath: 'Physical Goods > Laptops',
     description: 'Entry-level Chromebook laptop',
     unit: '',
     prices: generatePrices(299, 'physical', {
@@ -767,6 +896,9 @@ export const products: Product[] = [
     name: 'Apple Watch SE',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Wearables',
+    brand: 'Apple',
+    categoryPath: 'Physical Goods > Wearables',
     description: 'Apple Watch SE (2nd Gen)',
     unit: '',
     prices: generatePrices(249, 'physical', {
@@ -779,6 +911,9 @@ export const products: Product[] = [
     name: 'Samsung Galaxy Buds',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Audio',
+    brand: 'Samsung',
+    categoryPath: 'Physical Goods > Audio',
     description: 'Samsung Galaxy Buds3 wireless earbuds',
     unit: '',
     prices: generatePrices(179, 'physical', {
@@ -791,6 +926,9 @@ export const products: Product[] = [
     name: 'Bananas (1 kg)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Produce',
+    brand: '',
+    categoryPath: 'Essentials > Produce',
     description: 'Fresh bananas per kilogram',
     unit: '/kg',
     prices: generatePrices(1.30, 'essential', {
@@ -803,6 +941,9 @@ export const products: Product[] = [
     name: 'Tomatoes (1 kg)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Produce',
+    brand: '',
+    categoryPath: 'Essentials > Produce',
     description: 'Fresh tomatoes per kilogram',
     unit: '/kg',
     prices: generatePrices(2.50, 'essential', {
@@ -815,6 +956,9 @@ export const products: Product[] = [
     name: 'Cheese (1 kg, local)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Dairy',
+    brand: '',
+    categoryPath: 'Essentials > Dairy',
     description: 'Local cheese per kilogram',
     unit: '/kg',
     prices: generatePrices(10.50, 'essential', {
@@ -827,6 +971,9 @@ export const products: Product[] = [
     name: 'Pasta (500g)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Grains',
+    brand: '',
+    categoryPath: 'Essentials > Grains',
     description: 'Dry pasta, 500g package',
     unit: '',
     prices: generatePrices(1.50, 'essential', {
@@ -839,6 +986,9 @@ export const products: Product[] = [
     name: 'Cooking Oil (1 liter)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Cooking',
+    brand: '',
+    categoryPath: 'Essentials > Cooking',
     description: 'Vegetable or sunflower cooking oil',
     unit: '/L',
     prices: generatePrices(3.20, 'essential', {
@@ -851,6 +1001,9 @@ export const products: Product[] = [
     name: 'Sugar (1 kg)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Cooking',
+    brand: '',
+    categoryPath: 'Essentials > Cooking',
     description: 'White granulated sugar per kilogram',
     unit: '/kg',
     prices: generatePrices(1.80, 'essential', {
@@ -863,6 +1016,9 @@ export const products: Product[] = [
     name: 'Beef (1 kg)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Protein',
+    brand: '',
+    categoryPath: 'Essentials > Protein',
     description: 'Beef round or equivalent per kilogram',
     unit: '/kg',
     prices: generatePrices(12.00, 'essential', {
@@ -875,6 +1031,9 @@ export const products: Product[] = [
     name: 'Fish (1 kg, fresh)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Protein',
+    brand: '',
+    categoryPath: 'Essentials > Protein',
     description: 'Fresh fish fillet per kilogram',
     unit: '/kg',
     prices: generatePrices(14.00, 'essential', {
@@ -887,6 +1046,9 @@ export const products: Product[] = [
     name: 'Bottled Water (1.5L)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Beverages',
+    brand: '',
+    categoryPath: 'Essentials > Beverages',
     description: '1.5 liter bottle of water',
     unit: '',
     prices: generatePrices(1.50, 'essential', {
@@ -899,6 +1061,9 @@ export const products: Product[] = [
     name: 'Beer (500ml, domestic)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Alcohol',
+    brand: '',
+    categoryPath: 'Essentials > Alcohol',
     description: 'Domestic beer, 500ml bottle or can',
     unit: '',
     prices: generatePrices(2.00, 'essential', {
@@ -911,6 +1076,9 @@ export const products: Product[] = [
     name: 'Wine (750ml, mid-range)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Alcohol',
+    brand: '',
+    categoryPath: 'Essentials > Alcohol',
     description: 'Mid-range bottle of wine',
     unit: '',
     prices: generatePrices(12.00, 'essential', {
@@ -923,6 +1091,9 @@ export const products: Product[] = [
     name: 'Zara Summer Dress',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Clothing',
+    brand: 'Zara',
+    categoryPath: 'Physical Goods > Clothing',
     description: 'Mid-range summer dress from Zara',
     unit: '',
     prices: generatePrices(49.90, 'physical', {
@@ -935,6 +1106,9 @@ export const products: Product[] = [
     name: 'H&M Basic T-Shirt',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Clothing',
+    brand: 'H&M',
+    categoryPath: 'Physical Goods > Clothing',
     description: 'Basic cotton t-shirt from H&M',
     unit: '',
     prices: generatePrices(12.99, 'physical', {
@@ -947,6 +1121,9 @@ export const products: Product[] = [
     name: 'Running Shoes (mid-range)',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Footwear',
+    brand: '',
+    categoryPath: 'Physical Goods > Footwear',
     description: 'Mid-range running shoes (Asics, New Balance, etc.)',
     unit: '',
     prices: generatePrices(120, 'physical', {
@@ -959,6 +1136,9 @@ export const products: Product[] = [
     name: 'Winter Jacket (branded)',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Clothing',
+    brand: '',
+    categoryPath: 'Physical Goods > Clothing',
     description: 'Mid-range branded winter jacket (North Face, Columbia, etc.)',
     unit: '',
     prices: generatePrices(180, 'physical', {
@@ -971,6 +1151,9 @@ export const products: Product[] = [
     name: 'Men\'s Business Suit',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Clothing',
+    brand: '',
+    categoryPath: 'Physical Goods > Clothing',
     description: 'Mid-range men\'s business suit',
     unit: '',
     prices: generatePrices(400, 'physical', {
@@ -983,6 +1166,9 @@ export const products: Product[] = [
     name: 'Monthly Transit Pass',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Transport',
+    brand: '',
+    categoryPath: 'Services > Transport',
     description: 'Monthly public transportation pass (bus/metro)',
     unit: '/month',
     prices: generatePrices(75, 'service', {
@@ -996,6 +1182,9 @@ export const products: Product[] = [
     name: 'Uber Ride (5 km)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Transport',
+    brand: 'Uber',
+    categoryPath: 'Services > Transport',
     description: 'Uber or equivalent ride-hail, 5 km trip',
     unit: '',
     prices: generatePrices(10, 'service', {
@@ -1008,6 +1197,9 @@ export const products: Product[] = [
     name: 'Taxi (1 km)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Transport',
+    brand: '',
+    categoryPath: 'Services > Transport',
     description: 'Standard taxi fare for 1 kilometer',
     unit: '/km',
     prices: generatePrices(2.50, 'service', {
@@ -1020,6 +1212,9 @@ export const products: Product[] = [
     name: 'Car Wash (basic)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Auto Services',
+    brand: '',
+    categoryPath: 'Services > Auto Services',
     description: 'Basic exterior car wash',
     unit: '',
     prices: generatePrices(15, 'service', {
@@ -1032,6 +1227,9 @@ export const products: Product[] = [
     name: '3-Bedroom Apartment (City)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Housing',
+    brand: '',
+    categoryPath: 'Services > Housing',
     description: '3-bedroom apartment monthly rent in city center',
     unit: '/month',
     prices: generatePrices(2500, 'service', {
@@ -1045,6 +1243,9 @@ export const products: Product[] = [
     name: 'Airbnb (1 night, city)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Accommodation',
+    brand: 'Airbnb',
+    categoryPath: 'Services > Accommodation',
     description: 'Average Airbnb private room, 1 night in city center',
     unit: '/night',
     prices: generatePrices(80, 'service', {
@@ -1058,6 +1259,9 @@ export const products: Product[] = [
     name: 'Prescription Glasses',
     category: 'medical',
     categoryLabel: 'Medical',
+    subcategory: 'Vision',
+    brand: '',
+    categoryPath: 'Medical > Vision',
     description: 'Complete pair of prescription glasses (frames + lenses)',
     unit: '',
     prices: generatePrices(300, 'medical', {
@@ -1070,6 +1274,9 @@ export const products: Product[] = [
     name: 'Paracetamol / Tylenol (20 tablets)',
     category: 'medical',
     categoryLabel: 'Medical',
+    subcategory: 'Medications',
+    brand: '',
+    categoryPath: 'Medical > Medications',
     description: '20 tablets of paracetamol/acetaminophen (500mg)',
     unit: '',
     prices: generatePrices(8, 'medical', {
@@ -1082,6 +1289,9 @@ export const products: Product[] = [
     name: 'Health Insurance (monthly)',
     category: 'medical',
     categoryLabel: 'Medical',
+    subcategory: 'Insurance',
+    brand: '',
+    categoryPath: 'Medical > Insurance',
     description: 'Basic health insurance monthly premium (individual)',
     unit: '/month',
     prices: generatePrices(450, 'medical', {
@@ -1095,6 +1305,9 @@ export const products: Product[] = [
     name: 'Therapy Session (1 hr)',
     category: 'medical',
     categoryLabel: 'Medical',
+    subcategory: 'Mental Health',
+    brand: '',
+    categoryPath: 'Medical > Mental Health',
     description: 'One-hour therapy/counseling session',
     unit: '/session',
     prices: generatePrices(150, 'medical', {
@@ -1107,6 +1320,9 @@ export const products: Product[] = [
     name: 'Hospital Stay (1 night)',
     category: 'medical',
     categoryLabel: 'Medical',
+    subcategory: 'Hospital',
+    brand: '',
+    categoryPath: 'Medical > Hospital',
     description: 'One night in a hospital (private room, no surgery)',
     unit: '/night',
     prices: generatePrices(3000, 'medical', {
@@ -1119,6 +1335,9 @@ export const products: Product[] = [
     name: 'Private School (annual)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Education',
+    brand: '',
+    categoryPath: 'Services > Education',
     description: 'Private K-12 school annual tuition',
     unit: '/year',
     prices: generatePrices(15000, 'service', {
@@ -1132,6 +1351,9 @@ export const products: Product[] = [
     name: 'Online Course (Udemy/Coursera)',
     category: 'digital',
     categoryLabel: 'Digital Goods',
+    subcategory: 'Learning',
+    brand: '',
+    categoryPath: 'Digital Goods > Learning',
     description: 'Average online course on platforms like Udemy or Coursera',
     unit: '',
     prices: generatePrices(20, 'digital', {
@@ -1144,6 +1366,9 @@ export const products: Product[] = [
     name: 'University Textbook',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Books',
+    brand: '',
+    categoryPath: 'Physical Goods > Books',
     description: 'Average university textbook (new)',
     unit: '',
     prices: generatePrices(80, 'physical', {
@@ -1156,6 +1381,9 @@ export const products: Product[] = [
     name: 'Movie Ticket',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Entertainment',
+    brand: '',
+    categoryPath: 'Services > Entertainment',
     description: 'One cinema ticket for a new release',
     unit: '',
     prices: generatePrices(13, 'service', {
@@ -1169,6 +1397,9 @@ export const products: Product[] = [
     name: 'Concert Ticket (popular artist)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Entertainment',
+    brand: '',
+    categoryPath: 'Services > Entertainment',
     description: 'Average ticket for a popular music concert',
     unit: '',
     prices: generatePrices(100, 'service', {
@@ -1181,6 +1412,9 @@ export const products: Product[] = [
     name: 'Museum Entry',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Entertainment',
+    brand: '',
+    categoryPath: 'Services > Entertainment',
     description: 'Admission to a major museum',
     unit: '',
     prices: generatePrices(20, 'service', {
@@ -1193,6 +1427,9 @@ export const products: Product[] = [
     name: 'Theme Park Day Pass',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Entertainment',
+    brand: '',
+    categoryPath: 'Services > Entertainment',
     description: 'One-day admission to a major theme park',
     unit: '',
     prices: generatePrices(110, 'service', {
@@ -1205,6 +1442,9 @@ export const products: Product[] = [
     name: 'Shampoo (400ml)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Personal Care',
+    brand: '',
+    categoryPath: 'Essentials > Personal Care',
     description: 'Brand-name shampoo, 400ml bottle',
     unit: '',
     prices: generatePrices(6.50, 'essential', {
@@ -1217,6 +1457,9 @@ export const products: Product[] = [
     name: 'Toothpaste (Colgate, 100ml)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Personal Care',
+    brand: 'Colgate',
+    categoryPath: 'Essentials > Personal Care',
     description: 'Standard toothpaste tube, 100ml',
     unit: '',
     prices: generatePrices(3.50, 'essential', {
@@ -1229,6 +1472,9 @@ export const products: Product[] = [
     name: 'Deodorant (roll-on)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Personal Care',
+    brand: '',
+    categoryPath: 'Essentials > Personal Care',
     description: 'Brand-name roll-on deodorant',
     unit: '',
     prices: generatePrices(5.00, 'essential', {
@@ -1241,6 +1487,9 @@ export const products: Product[] = [
     name: 'Skincare Serum (30ml)',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Personal Care',
+    brand: '',
+    categoryPath: 'Physical Goods > Personal Care',
     description: 'Popular skincare serum (e.g., Vitamin C, hyaluronic acid)',
     unit: '',
     prices: generatePrices(25, 'physical', {
@@ -1253,6 +1502,9 @@ export const products: Product[] = [
     name: 'IKEA BILLY Bookshelf',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Furniture',
+    brand: 'IKEA',
+    categoryPath: 'Physical Goods > Furniture',
     description: 'IKEA BILLY bookcase (standard)',
     unit: '',
     prices: generatePrices(69, 'physical', {
@@ -1265,6 +1517,9 @@ export const products: Product[] = [
     name: 'Washing Machine',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Home Appliances',
+    brand: '',
+    categoryPath: 'Physical Goods > Home Appliances',
     description: 'Mid-range front-loading washing machine',
     unit: '',
     prices: generatePrices(600, 'physical', {
@@ -1277,6 +1532,9 @@ export const products: Product[] = [
     name: 'Microwave Oven',
     category: 'physical',
     categoryLabel: 'Physical Goods',
+    subcategory: 'Home Appliances',
+    brand: '',
+    categoryPath: 'Physical Goods > Home Appliances',
     description: 'Standard countertop microwave',
     unit: '',
     prices: generatePrices(100, 'physical', {
@@ -1289,6 +1547,9 @@ export const products: Product[] = [
     name: 'Mobile Data (1 GB)',
     category: 'digital',
     categoryLabel: 'Digital Goods',
+    subcategory: 'Mobile',
+    brand: '',
+    categoryPath: 'Digital Goods > Mobile',
     description: 'Price of 1 GB of mobile data',
     unit: '',
     prices: generatePrices(5, 'digital', {
@@ -1301,6 +1562,9 @@ export const products: Product[] = [
     name: 'Phone Plan (unlimited)',
     category: 'digital',
     categoryLabel: 'Digital Goods',
+    subcategory: 'Mobile',
+    brand: '',
+    categoryPath: 'Digital Goods > Mobile',
     description: 'Monthly unlimited calls + data phone plan',
     unit: '/month',
     prices: generatePrices(60, 'digital', {
@@ -1313,6 +1577,9 @@ export const products: Product[] = [
     name: 'Accountant (1 hr)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Professional',
+    brand: '',
+    categoryPath: 'Services > Professional',
     description: 'One hour of certified accountant services',
     unit: '/hr',
     prices: generatePrices(100, 'service', {
@@ -1325,6 +1592,9 @@ export const products: Product[] = [
     name: 'House Cleaning (2 hrs)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Home Services',
+    brand: '',
+    categoryPath: 'Services > Home Services',
     description: 'Professional house cleaning service, 2 hours',
     unit: '',
     prices: generatePrices(80, 'service', {
@@ -1337,6 +1607,9 @@ export const products: Product[] = [
     name: 'Dry Cleaning (suit)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Home Services',
+    brand: '',
+    categoryPath: 'Services > Home Services',
     description: 'Dry cleaning one business suit',
     unit: '',
     prices: generatePrices(15, 'service', {
@@ -1349,6 +1622,9 @@ export const products: Product[] = [
     name: 'Fast Food Combo Meal',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Fast Food',
+    brand: '',
+    categoryPath: 'Essentials > Fast Food',
     description: 'Standard fast food combo meal (burger + fries + drink)',
     unit: '',
     prices: generatePrices(9, 'essential', {
@@ -1361,6 +1637,9 @@ export const products: Product[] = [
     name: 'Pizza Delivery (large)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Fast Food',
+    brand: '',
+    categoryPath: 'Essentials > Fast Food',
     description: 'Large pizza delivered (e.g., Domino\'s, local equivalent)',
     unit: '',
     prices: generatePrices(15, 'essential', {
@@ -1373,6 +1652,9 @@ export const products: Product[] = [
     name: 'Yoga Class (drop-in)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Fitness',
+    brand: '',
+    categoryPath: 'Services > Fitness',
     description: 'Single drop-in yoga class session',
     unit: '',
     prices: generatePrices(20, 'service', {
@@ -1385,6 +1667,9 @@ export const products: Product[] = [
     name: 'Personal Trainer (1 hr)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Fitness',
+    brand: '',
+    categoryPath: 'Services > Fitness',
     description: 'One hour with a certified personal trainer',
     unit: '/hr',
     prices: generatePrices(60, 'service', {
@@ -1397,6 +1682,9 @@ export const products: Product[] = [
     name: 'Diapers (pack of 60)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Baby & Childcare',
+    brand: '',
+    categoryPath: 'Essentials > Baby & Childcare',
     description: 'Pack of 60 baby diapers (Pampers or equivalent)',
     unit: '',
     prices: generatePrices(25, 'essential', {
@@ -1409,6 +1697,9 @@ export const products: Product[] = [
     name: 'Baby Formula (400g)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Baby & Childcare',
+    brand: '',
+    categoryPath: 'Essentials > Baby & Childcare',
     description: 'Infant formula, 400g tin',
     unit: '',
     prices: generatePrices(18, 'essential', {
@@ -1421,6 +1712,9 @@ export const products: Product[] = [
     name: 'Daycare (monthly)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Childcare',
+    brand: '',
+    categoryPath: 'Services > Childcare',
     description: 'Full-time daycare / nursery for one child, per month',
     unit: '/month',
     prices: generatePrices(1200, 'service', {
@@ -1434,6 +1728,9 @@ export const products: Product[] = [
     name: 'Vet Visit (checkup)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Pet Services',
+    brand: '',
+    categoryPath: 'Services > Pet Services',
     description: 'Standard veterinary checkup for a pet',
     unit: '',
     prices: generatePrices(55, 'service', {
@@ -1446,6 +1743,9 @@ export const products: Product[] = [
     name: 'Dog Food (monthly)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Pet Supplies',
+    brand: '',
+    categoryPath: 'Essentials > Pet Supplies',
     description: 'One month supply of mid-range dry dog food',
     unit: '/month',
     prices: generatePrices(45, 'essential', {
@@ -1458,6 +1758,9 @@ export const products: Product[] = [
     name: 'Hotel Night (3-star)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Accommodation',
+    brand: '',
+    categoryPath: 'Services > Accommodation',
     description: 'One night in a 3-star hotel in city center',
     unit: '/night',
     prices: generatePrices(120, 'service', {
@@ -1471,6 +1774,9 @@ export const products: Product[] = [
     name: 'Domestic Flight (1 hr)',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Transport',
+    brand: '',
+    categoryPath: 'Services > Transport',
     description: 'One-way domestic flight, ~1 hour duration',
     unit: '',
     prices: generatePrices(150, 'service', {
@@ -1484,6 +1790,9 @@ export const products: Product[] = [
     name: 'Passport Renewal',
     category: 'service',
     categoryLabel: 'Services',
+    subcategory: 'Government',
+    brand: '',
+    categoryPath: 'Services > Government',
     description: 'Cost to renew an adult passport',
     unit: '',
     prices: generatePrices(130, 'service', {
@@ -1497,6 +1806,9 @@ export const products: Product[] = [
     name: 'ChatGPT Plus',
     category: 'digital',
     categoryLabel: 'Digital Goods',
+    subcategory: 'AI Tools',
+    brand: 'OpenAI',
+    categoryPath: 'Digital Goods > AI Tools',
     description: 'Monthly ChatGPT Plus subscription',
     unit: '/month',
     prices: generatePrices(20, 'digital', {
@@ -1509,6 +1821,9 @@ export const products: Product[] = [
     name: 'YouTube Premium',
     category: 'digital',
     categoryLabel: 'Digital Goods',
+    subcategory: 'Streaming Video',
+    brand: 'Google',
+    categoryPath: 'Digital Goods > Streaming Video',
     description: 'Monthly YouTube Premium individual plan',
     unit: '/month',
     prices: generatePrices(13.99, 'digital', {
@@ -1521,6 +1836,9 @@ export const products: Product[] = [
     name: 'Disney+ Standard',
     category: 'digital',
     categoryLabel: 'Digital Goods',
+    subcategory: 'Streaming Video',
+    brand: 'Disney',
+    categoryPath: 'Digital Goods > Streaming Video',
     description: 'Monthly Disney+ Standard subscription',
     unit: '/month',
     prices: generatePrices(13.99, 'digital', {
@@ -1533,6 +1851,9 @@ export const products: Product[] = [
     name: 'Amazon Prime (annual)',
     category: 'digital',
     categoryLabel: 'Digital Goods',
+    subcategory: 'Streaming Video',
+    brand: 'Amazon',
+    categoryPath: 'Digital Goods > Streaming Video',
     description: 'Annual Amazon Prime membership',
     unit: '/year',
     prices: generatePrices(139, 'digital', {
@@ -1545,6 +1866,9 @@ export const products: Product[] = [
     name: 'Natural Gas (monthly)',
     category: 'essential',
     categoryLabel: 'Essentials',
+    subcategory: 'Utilities',
+    brand: '',
+    categoryPath: 'Essentials > Utilities',
     description: 'Average monthly natural gas bill for household',
     unit: '/month',
     prices: generatePrices(60, 'essential', {
