@@ -64,9 +64,14 @@ def seed_database():
     init_db()
     conn = get_db()
     existing = conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
+    needs_reseed = False
     if existing > 0 and existing >= len(PRODUCTS):
-        conn.close()
-        return
+        empty_brands = conn.execute("SELECT COUNT(*) FROM products WHERE brand = '' OR brand IS NULL").fetchone()[0]
+        if empty_brands > existing * 0.5:
+            needs_reseed = True
+        else:
+            conn.close()
+            return
     if existing > 0:
         conn.execute("DELETE FROM prices")
         conn.execute("DELETE FROM products")
@@ -79,8 +84,8 @@ def seed_database():
         )
     for p in PRODUCTS:
         conn.execute(
-            "INSERT OR IGNORE INTO products (id, name, category, category_label, description, unit, base_usd_price) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (p["id"], p["name"], p["category"], p["category_label"], p["description"], p["unit"], p["base_usd_price"])
+            "INSERT OR IGNORE INTO products (id, name, category, category_label, subcategory, brand, category_path, description, unit, base_usd_price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (p["id"], p["name"], p["category"], p["category_label"], p.get("subcategory", ""), p.get("brand", ""), p.get("category_path", ""), p["description"], p["unit"], p["base_usd_price"])
         )
         for c in COUNTRIES:
             price_data = generate_price(p["base_usd_price"], p["category"], c["code"], c["exchange_rate"], c["vat_rate"], c["import_duty_avg"])

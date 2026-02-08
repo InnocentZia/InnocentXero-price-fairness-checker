@@ -36,6 +36,9 @@ def init_db():
             name TEXT NOT NULL,
             category TEXT NOT NULL,
             category_label TEXT NOT NULL,
+            subcategory TEXT NOT NULL DEFAULT '',
+            brand TEXT NOT NULL DEFAULT '',
+            category_path TEXT NOT NULL DEFAULT '',
             description TEXT NOT NULL,
             unit TEXT NOT NULL,
             base_usd_price REAL NOT NULL,
@@ -63,6 +66,17 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_prices_product ON prices(product_id);
         CREATE INDEX IF NOT EXISTS idx_prices_country ON prices(country_code);
         CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+    """)
+    cols = [row[1] for row in conn.execute("PRAGMA table_info(products)").fetchall()]
+    if "subcategory" not in cols:
+        conn.execute("ALTER TABLE products ADD COLUMN subcategory TEXT NOT NULL DEFAULT ''")
+    if "brand" not in cols:
+        conn.execute("ALTER TABLE products ADD COLUMN brand TEXT NOT NULL DEFAULT ''")
+    if "category_path" not in cols:
+        conn.execute("ALTER TABLE products ADD COLUMN category_path TEXT NOT NULL DEFAULT ''")
+    conn.executescript("""
+        CREATE INDEX IF NOT EXISTS idx_products_subcategory ON products(subcategory);
+        CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand);
     """)
     conn.commit()
     conn.close()

@@ -24,6 +24,9 @@ class ProductCreate(BaseModel):
     name: str
     category: str
     category_label: str
+    subcategory: str = ''
+    brand: str = ''
+    category_path: str = ''
     description: str
     unit: str
     base_usd_price: float
@@ -33,6 +36,9 @@ class ProductUpdate(BaseModel):
     name: Optional[str] = None
     category: Optional[str] = None
     category_label: Optional[str] = None
+    subcategory: Optional[str] = None
+    brand: Optional[str] = None
+    category_path: Optional[str] = None
     description: Optional[str] = None
     unit: Optional[str] = None
     base_usd_price: Optional[float] = None
@@ -166,23 +172,42 @@ async def healthz():
 @app.get("/api/products")
 async def list_products(
     category: Optional[str] = None,
+    subcategory: Optional[str] = None,
+    brand: Optional[str] = None,
     search: Optional[str] = None,
     limit: int = Query(200, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
     conn = get_db()
     query = "SELECT * FROM products WHERE 1=1"
+    count_query = "SELECT COUNT(*) FROM products WHERE 1=1"
     params: list = []
+    count_params: list = []
     if category:
         query += " AND category = ?"
+        count_query += " AND category = ?"
         params.append(category)
+        count_params.append(category)
+    if subcategory:
+        query += " AND subcategory = ?"
+        count_query += " AND subcategory = ?"
+        params.append(subcategory)
+        count_params.append(subcategory)
+    if brand:
+        query += " AND brand = ?"
+        count_query += " AND brand = ?"
+        params.append(brand)
+        count_params.append(brand)
     if search:
-        query += " AND (LOWER(name) LIKE ? OR LOWER(category_label) LIKE ?)"
-        params.extend([f"%{search.lower()}%", f"%{search.lower()}%"])
+        query += " AND (LOWER(name) LIKE ? OR LOWER(category_label) LIKE ? OR LOWER(brand) LIKE ? OR LOWER(subcategory) LIKE ?)"
+        count_query += " AND (LOWER(name) LIKE ? OR LOWER(category_label) LIKE ? OR LOWER(brand) LIKE ? OR LOWER(subcategory) LIKE ?)"
+        s = f"%{search.lower()}%"
+        params.extend([s, s, s, s])
+        count_params.extend([s, s, s, s])
     query += " ORDER BY name LIMIT ? OFFSET ?"
     params.extend([limit, offset])
     rows = conn.execute(query, params).fetchall()
-    total = conn.execute("SELECT COUNT(*) FROM products" + (" WHERE category = ?" if category else ""), [category] if category else []).fetchone()[0]
+    total = conn.execute(count_query, count_params).fetchone()[0]
     conn.close()
     return {"products": [row_to_dict(r) for r in rows], "total": total}
 
@@ -212,8 +237,8 @@ async def create_product(product: ProductCreate):
         conn.close()
         raise HTTPException(status_code=409, detail="Product already exists")
     conn.execute(
-        "INSERT INTO products (id, name, category, category_label, description, unit, base_usd_price) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (product.id, product.name, product.category, product.category_label, product.description, product.unit, product.base_usd_price)
+        "INSERT INTO products (id, name, category, category_label, subcategory, brand, category_path, description, unit, base_usd_price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (product.id, product.name, product.category, product.category_label, product.subcategory, product.brand, product.category_path, product.description, product.unit, product.base_usd_price)
     )
     countries = conn.execute("SELECT * FROM countries").fetchall()
     from app.seed import generate_price
@@ -354,6 +379,46 @@ async def get_stats():
         "total_countries": total_countries,
         "total_price_entries": total_prices,
     }
+
+
+@app.get("/api/categories")
+async def list_categories():
+    conn = get_db()
+    rows = conn.execute("SELECT DISTINCT category, category_label FROM products ORDER BY category_label").fetchall()
+    result = []
+    for r in rows:
+        subcats = conn.execute("SELECT DISTINCT subcategory FROM products WHERE category = ? AND subcategory != '' ORDER BY subcategory", (r["category"],)).fetchall()
+        brands = conn.execute("SELECT DISTINCT brand FROM products WHERE category = ? AND brand != '' ORDER BY brand", (r["category"],)).fetchall()
+        result.append({
+            "id": r["category"],
+            "label": r["category_label"],
+            "subcategories": [s["subcategory"] for s in subcats],
+            "brands": [b["brand"] for b in brands],
+        })
+    conn.close()
+    return {"categories": result}
+
+
+@app.get("/api/brands")
+async def list_brands(category: Optional[str] = None):
+    conn = get_db()
+    if category:
+        rows = conn.execute("SELECT DISTINCT brand FROM products WHERE category = ? AND brand != '' ORDER BY brand", (category,)).fetchall()
+    else:
+        rows = conn.execute("SELECT DISTINCT brand FROM products WHERE brand != '' ORDER BY brand").fetchall()
+    conn.close()
+    return {"brands": [r["brand"] for r in rows]}
+
+
+@app.get("/api/subcategories")
+async def list_subcategories(category: Optional[str] = None):
+    conn = get_db()
+    if category:
+        rows = conn.execute("SELECT DISTINCT subcategory FROM products WHERE category = ? AND subcategory != '' ORDER BY subcategory", (category,)).fetchall()
+    else:
+        rows = conn.execute("SELECT DISTINCT subcategory FROM products WHERE subcategory != '' ORDER BY subcategory").fetchall()
+    conn.close()
+    return {"subcategories": [r["subcategory"] for r in rows]}
 
 
 @app.get("/api/compare/{product_id}")
