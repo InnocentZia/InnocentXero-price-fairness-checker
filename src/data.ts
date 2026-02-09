@@ -56,6 +56,28 @@ export interface FairnessResult {
   incomePercentage: number
   usIncomePercentage: number
   factors: PriceFactor[]
+  hoursOfWork: number
+  usHoursOfWork: number
+  confidenceScore: number
+  confidenceLabel: string
+  trendData: TrendPoint[]
+  trendSignal: 'buy' | 'wait' | 'neutral'
+  trendReason: string
+}
+
+export interface TrendPoint {
+  month: string
+  price: number
+  avg: number
+}
+
+export interface BrandFairnessEntry {
+  brand: string
+  avgScore: number
+  productCount: number
+  worstCountry: string
+  bestCountry: string
+  category: string
 }
 
 export interface PriceFactor {
@@ -1972,12 +1994,25 @@ export function calculateFairness(product: Product, countryCode: string): Fairne
     })
   }
 
+  const trendData = generateTrendData(product, countryCode)
+  const { signal: trendSignal, reason: trendReason } = getTrendSignal(trendData)
+  const hw = hoursOfWork(priceUSD, country)
+  const usHw = hoursOfWork(usPrice, usCountry)
+  const conf = getConfidence(product, countryCode)
+
   return {
     rawScore, pppScore, incomeScore, colScore,
     priceUSD, usPrice, globalMedianUSD,
     pppAdjustedPrice: pppPrice,
     incomePercentage, usIncomePercentage,
     factors,
+    hoursOfWork: hw,
+    usHoursOfWork: usHw,
+    confidenceScore: conf.score,
+    confidenceLabel: conf.label,
+    trendData,
+    trendSignal,
+    trendReason,
   }
 }
 
@@ -2111,3 +2146,133 @@ export const fairnessLenses: FairnessLens[] = [
     },
   },
 ]
+
+function seededRandom(seed: number): () => number {
+  let s = seed
+  return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646 }
+}
+
+function hashStr(str: string): number {
+  let h = 0
+  for (let i = 0; i < str.length; i++) { h = ((h << 5) - h + str.charCodeAt(i)) | 0 }
+  return Math.abs(h)
+}
+
+export function generateTrendData(product: Product, countryCode: string): TrendPoint[] {
+  const country = getCountryByCode(countryCode)
+  const entry = product.prices[countryCode]
+  if (!country || !entry) return []
+  const baseUSD = priceToUSD(entry.localPrice, country)
+  const rand = seededRandom(hashStr(product.id + countryCode))
+  const months = ['Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb']
+  const seasonalFactors: Record<string, number[]> = {
+    digital: [1, 1, 0.98, 0.97, 0.96, 0.97, 0.98, 0.99, 0.92, 0.95, 1.02, 1],
+    physical: [1.02, 1, 0.98, 0.96, 0.95, 0.97, 1, 1.03, 0.88, 0.93, 1.05, 1.02],
+    saas: [1, 1, 1, 0.99, 0.99, 1, 1, 1, 0.95, 0.98, 1.02, 1],
+    essential: [0.98, 0.97, 0.95, 0.96, 0.97, 0.99, 1.01, 1.02, 1, 1.01, 1.03, 1.02],
+    service: [1, 0.98, 0.97, 0.99, 1.02, 1.05, 1.03, 1, 0.95, 0.98, 1, 1],
+    medical: [1, 1.01, 1.02, 1.01, 1, 0.99, 1, 1.01, 1, 1.01, 1.02, 1.01],
+  }
+  const sf = seasonalFactors[product.category] || seasonalFactors.digital
+  const drift = (rand() - 0.5) * 0.08
+  const points: TrendPoint[] = []
+  let cumDrift = 0
+  for (let i = 0; i < 12; i++) {
+    cumDrift += drift / 12
+    const noise = (rand() - 0.5) * 0.06
+    const price = baseUSD * sf[i] * (1 + cumDrift + noise)
+    points.push({ month: months[i], price: Math.round(price * 100) / 100, avg: Math.round(baseUSD * 100) / 100 })
+  }
+  return points
+}
+
+export function getTrendSignal(trendData: TrendPoint[]): { signal: 'buy' | 'wait' | 'neutral'; reason: string } {
+  if (trendData.length < 3) return { signal: 'neutral', reason: 'Insufficient data for trend analysis' }
+  const recent = trendData.slice(-3)
+  const older = trendData.slice(0, -3)
+  const recentAvg = recent.reduce((s, p) => s + p.price, 0) / recent.length
+  const olderAvg = older.reduce((s, p) => s + p.price, 0) / older.length
+  const currentPrice = trendData[trendData.length - 1].price
+  const avg12m = trendData.reduce((s, p) => s + p.price, 0) / trendData.length
+  const pctChange = ((recentAvg - olderAvg) / olderAvg) * 100
+  const vsAvg = ((currentPrice - avg12m) / avg12m) * 100
+  if (pctChange < -3 && vsAvg < -2) return { signal: 'buy', reason: `Prices dropped ${Math.abs(Math.round(pctChange))}% recently and are ${Math.abs(Math.round(vsAvg))}% below the 12-month average` }
+  if (pctChange > 3 && vsAvg > 2) return { signal: 'wait', reason: `Prices rose ${Math.round(pctChange)}% recently and are ${Math.round(vsAvg)}% above the 12-month average` }
+  return { signal: 'neutral', reason: 'Prices are stable within normal range' }
+}
+
+export function hoursOfWork(priceUSD: number, country: Country): number {
+  const hourlyWage = country.medianIncome / (52 * 40)
+  return priceUSD / hourlyWage
+}
+
+export function getConfidence(product: Product, countryCode: string): { score: number; label: string } {
+  const entry = product.prices[countryCode]
+  if (!entry) return { score: 0, label: 'No data' }
+  const countriesWithPrice = countries.filter(c => product.prices[c.code]).length
+  const coverageScore = Math.min(40, (countriesWithPrice / countries.length) * 40)
+  const reportsScore = Math.min(30, Math.min(entry.reports, 3000) / 100)
+  const brandScore = product.brand ? 15 : 5
+  const categoryScore = ['digital', 'saas'].includes(product.category) ? 15 : 10
+  const total = Math.round(coverageScore + reportsScore + brandScore + categoryScore)
+  const label = total >= 80 ? 'High' : total >= 55 ? 'Medium' : 'Low'
+  return { score: total, label }
+}
+
+export function getBrandFairnessIndex(): BrandFairnessEntry[] {
+  const brandMap = new Map<string, { scores: number[]; cats: Set<string>; bestScore: number; worstScore: number; bestCountry: string; worstCountry: string }>()
+  for (const product of products) {
+    if (!product.brand) continue
+    for (const country of countries) {
+      const result = calculateFairness(product, country.code)
+      if (!result) continue
+      const existing = brandMap.get(product.brand) || { scores: [], cats: new Set<string>(), bestScore: 0, worstScore: 100, bestCountry: '', worstCountry: '' }
+      existing.scores.push(result.pppScore)
+      existing.cats.add(product.categoryLabel)
+      if (result.pppScore > existing.bestScore) { existing.bestScore = result.pppScore; existing.bestCountry = country.name }
+      if (result.pppScore < existing.worstScore) { existing.worstScore = result.pppScore; existing.worstCountry = country.name }
+      brandMap.set(product.brand, existing)
+    }
+  }
+  const entries: BrandFairnessEntry[] = []
+  brandMap.forEach((data, brand) => {
+    if (data.scores.length < 5) return
+    entries.push({
+      brand,
+      avgScore: Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length),
+      productCount: Math.round(data.scores.length / countries.length),
+      worstCountry: data.worstCountry,
+      bestCountry: data.bestCountry,
+      category: [...data.cats].join(', '),
+    })
+  })
+  return entries.sort((a, b) => b.avgScore - a.avgScore)
+}
+
+export function applyScenario(result: FairnessResult, scenario: string, country: Country): { adjustedScore: number; explanation: string } {
+  const baseScore = result.pppScore
+  switch (scenario) {
+    case 'my-income': {
+      const ratio = result.incomePercentage / result.usIncomePercentage
+      const adjusted = Math.max(0, Math.min(100, 50 + (1 - ratio) * 50))
+      return { adjustedScore: Math.round(adjusted), explanation: `Adjusted for ${country.name}'s median income of $${country.medianIncome.toLocaleString()}/year. This item costs ${result.incomePercentage.toFixed(2)}% of annual income vs ${result.usIncomePercentage.toFixed(2)}% in the US.` }
+    }
+    case 'no-brand': {
+      const brandPremium = 8
+      const adjusted = Math.min(100, baseScore + brandPremium)
+      return { adjustedScore: Math.round(adjusted), explanation: `Removing estimated brand premium (~${brandPremium}pts). Generic or unbranded alternatives would score ${Math.round(adjusted)}/100.` }
+    }
+    case 'crisis': {
+      const crisisInflation = 15
+      const adjusted = Math.max(0, baseScore - crisisInflation)
+      return { adjustedScore: Math.round(adjusted), explanation: `During supply chain disruptions or economic crises, prices typically inflate 10-20%. Adjusted score accounts for ${crisisInflation}% crisis premium.` }
+    }
+    case 'sustainable': {
+      const sustainabilityPremium = 12
+      const adjusted = Math.min(100, baseScore + sustainabilityPremium)
+      return { adjustedScore: Math.round(adjusted), explanation: `Sustainably produced goods typically cost 10-25% more. If this price includes ethical sourcing and fair labor, the fairness score improves to ${Math.round(adjusted)}/100.` }
+    }
+    default:
+      return { adjustedScore: baseScore, explanation: 'Standard fairness score without adjustments.' }
+  }
+}

@@ -7,13 +7,15 @@ import {
   Flag, MessageSquare, Zap, Eye, HelpCircle, Monitor, Package, Cloud,
   ShoppingBasket, Gamepad2, Trophy, Database, Wifi, WifiOff,
   Scale, BookOpen, FileText, Home, X, TrendingUp, TrendingDown, MapPin,
+  Clock, ShieldCheck, ShoppingCart, Leaf, AlertOctagon, Building2,
 } from 'lucide-react'
 import { fetchStats } from './api'
 import {
   countries, products, productCategories, fairnessLenses,
   calculateFairness, generateQuizQuestion, getLeaderboard,
   priceToUSD, getCountryComparison, getGlobalStats,
-  type FairnessResult, type QuizQuestion,
+  getBrandFairnessIndex, applyScenario,
+  type FairnessResult, type QuizQuestion, type BrandFairnessEntry,
 } from './data'
 
 function ScoreGauge({ score, size = 'md', label }: { score: number; size?: 'sm' | 'md' | 'lg'; label?: string }) {
@@ -57,7 +59,7 @@ function FairnessBar({ score, label, description, active }: { score: number; lab
   )
 }
 
-type TabId = 'home' | 'checker' | 'compare' | 'vsworld' | 'quiz' | 'leaderboard' | 'community' | 'methodology'
+type TabId = 'home' | 'checker' | 'compare' | 'vsworld' | 'quiz' | 'leaderboard' | 'brands' | 'community' | 'methodology'
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabId>('home')
@@ -83,6 +85,9 @@ function App() {
   const [vsWorldCountry, setVsWorldCountry] = useState('')
   const [apiConnected, setApiConnected] = useState<boolean | null>(null)
   const [apiStats, setApiStats] = useState<{ total_products: number; total_countries: number; total_price_entries: number } | null>(null)
+  const [activeScenario, setActiveScenario] = useState<string>('')
+  const [brandIndex, setBrandIndex] = useState<BrandFairnessEntry[]>([])
+  const [brandFilter2, setBrandFilter2] = useState('')
   const [productSearch, setProductSearch] = useState('')
   const [countrySearch, setCountrySearch] = useState('')
   const [productDropdownOpen, setProductDropdownOpen] = useState(false)
@@ -133,6 +138,12 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (activeTab === 'brands' && brandIndex.length === 0) {
+      setBrandIndex(getBrandFairnessIndex())
+    }
+  }, [activeTab])
+
+  useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (productDropdownRef.current && !productDropdownRef.current.contains(e.target as Node)) setProductDropdownOpen(false)
       if (countryDropdownRef.current && !countryDropdownRef.current.contains(e.target as Node)) setCountryDropdownOpen(false)
@@ -162,6 +173,7 @@ function App() {
     { id: 'vsworld', label: 'Your Country vs World', icon: MapPin },
     { id: 'quiz', label: 'Quiz', icon: Gamepad2 },
     { id: 'leaderboard', label: 'Leaderboard', icon: Trophy },
+    { id: 'brands', label: 'Brand Index', icon: Building2 },
     { id: 'community', label: 'Community', icon: Users },
     { id: 'methodology', label: 'How We Score', icon: BookOpen },
   ]
@@ -531,7 +543,7 @@ function App() {
                       </div>
                     )
                   })()}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                     <div className="p-4 rounded-xl bg-gray-50 text-center">
                       <p className="text-xs text-gray-500 mb-1">Your Price (USD)</p>
                       <p className="text-xl font-bold text-gray-900">{formatUSD(fairnessResult.priceUSD)}</p>
@@ -547,10 +559,22 @@ function App() {
                       <p className="text-xl font-bold text-purple-600">{formatUSD(fairnessResult.globalMedianUSD)}</p>
                       <p className="text-xs text-gray-400 mt-1">Across {countries.filter(c => selectedProductData.prices[c.code]).length} countries</p>
                     </div>
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                     <div className="p-4 rounded-xl bg-gray-50 text-center">
                       <p className="text-xs text-gray-500 mb-1">% of Median Income</p>
                       <p className="text-xl font-bold text-gray-900">{fairnessResult.incomePercentage.toFixed(2)}%</p>
                       <p className="text-xs text-gray-400 mt-1">(US: {fairnessResult.usIncomePercentage.toFixed(2)}%)</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 text-center">
+                      <p className="text-xs text-gray-500 mb-1 flex items-center justify-center gap-1"><Clock className="w-3 h-3" /> Hours of Work</p>
+                      <p className="text-xl font-bold text-amber-700">{fairnessResult.hoursOfWork.toFixed(1)}h</p>
+                      <p className="text-xs text-gray-400 mt-1">US: {fairnessResult.usHoursOfWork.toFixed(1)}h ({fairnessResult.hoursOfWork > fairnessResult.usHoursOfWork ? `${(fairnessResult.hoursOfWork / fairnessResult.usHoursOfWork).toFixed(1)}x more` : fairnessResult.hoursOfWork < fairnessResult.usHoursOfWork ? `${(fairnessResult.usHoursOfWork / fairnessResult.hoursOfWork).toFixed(1)}x less` : 'Same'})</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-gray-50 text-center">
+                      <p className="text-xs text-gray-500 mb-1 flex items-center justify-center gap-1"><ShieldCheck className="w-3 h-3" /> Data Confidence</p>
+                      <p className={`text-xl font-bold ${fairnessResult.confidenceScore >= 70 ? 'text-emerald-600' : fairnessResult.confidenceScore >= 40 ? 'text-amber-600' : 'text-red-600'}`}>{fairnessResult.confidenceScore}/100</p>
+                      <p className="text-xs text-gray-400 mt-1">{fairnessResult.confidenceLabel}</p>
                     </div>
                   </div>
                   <div className="mb-6">
@@ -568,7 +592,78 @@ function App() {
                     </div>
                   </div>
                   <div className="flex items-center justify-center py-6">
-                    <ScoreGauge score={getScoreForLens(fairnessResult, activeLens)} size="lg" label={`${fairnessLenses.find(l => l.id === activeLens)?.label || ''} Score`} />
+                    <ScoreGauge score={activeScenario ? (() => { const adj = applyScenario(fairnessResult, activeScenario, selectedCountryData); return adj.adjustedScore; })() : getScoreForLens(fairnessResult, activeLens)} size="lg" label={activeScenario ? 'Scenario Score' : `${fairnessLenses.find(l => l.id === activeLens)?.label || ''} Score`} />
+                  </div>
+                  {activeScenario && (() => {
+                    const adj = applyScenario(fairnessResult, activeScenario, selectedCountryData)
+                    return (
+                      <div className="mt-3 p-3 rounded-xl bg-purple-50 border border-purple-200 text-center">
+                        <p className="text-sm text-purple-800 font-medium">{adj.explanation}</p>
+                        <p className="text-xs text-purple-600 mt-1">Base score: {Math.round(getScoreForLens(fairnessResult, activeLens))} &rarr; Adjusted: {Math.round(adj.adjustedScore)}</p>
+                      </div>
+                    )
+                  })()}
+                </div>
+
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><Eye className="w-5 h-5 text-indigo-600" /> Scenario Analysis</h3>
+                  <p className="text-sm text-gray-500 mb-4">See how fairness changes under different assumptions</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      { id: 'my-income', label: 'Fair for my income?', icon: DollarSign, color: 'indigo' },
+                      { id: 'no-brand', label: 'Without brand premium?', icon: ShoppingCart, color: 'purple' },
+                      { id: 'crisis', label: 'During a crisis?', icon: AlertOctagon, color: 'red' },
+                      { id: 'sustainable', label: 'If ethically sourced?', icon: Leaf, color: 'emerald' },
+                    ].map(s => (
+                      <button key={s.id} onClick={() => setActiveScenario(activeScenario === s.id ? '' : s.id)} className={`p-3 rounded-xl border text-center transition-all ${activeScenario === s.id ? `bg-${s.color === 'indigo' ? 'indigo' : s.color === 'purple' ? 'purple' : s.color === 'red' ? 'red' : 'emerald'}-50 border-${s.color === 'indigo' ? 'indigo' : s.color === 'purple' ? 'purple' : s.color === 'red' ? 'red' : 'emerald'}-300` : 'bg-gray-50 border-gray-200 hover:border-gray-300'}`}>
+                        <s.icon className={`w-5 h-5 mx-auto mb-1.5 ${activeScenario === s.id ? `text-${s.color === 'indigo' ? 'indigo' : s.color === 'purple' ? 'purple' : s.color === 'red' ? 'red' : 'emerald'}-600` : 'text-gray-400'}`} />
+                        <p className={`text-xs font-medium ${activeScenario === s.id ? 'text-gray-900' : 'text-gray-600'}`}>{s.label}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2"><TrendingUp className="w-5 h-5 text-indigo-600" /> 12-Month Price Trend</h3>
+                    <div className={`px-3 py-1 rounded-full text-xs font-semibold ${fairnessResult.trendSignal === 'buy' ? 'bg-emerald-100 text-emerald-700' : fairnessResult.trendSignal === 'wait' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {fairnessResult.trendSignal === 'buy' ? 'Buy Now' : fairnessResult.trendSignal === 'wait' ? 'Consider Waiting' : 'Neutral'}
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-500 mb-4">{fairnessResult.trendReason}</p>
+                  <div className="relative h-48 w-full">
+                    <svg viewBox="0 0 440 160" className="w-full h-full" preserveAspectRatio="none">
+                      {(() => {
+                        const data = fairnessResult.trendData
+                        if (data.length === 0) return null
+                        const minP = Math.min(...data.map(d => Math.min(d.price, d.avg))) * 0.95
+                        const maxP = Math.max(...data.map(d => Math.max(d.price, d.avg))) * 1.05
+                        const range = maxP - minP || 1
+                        const toX = (i: number) => 20 + (i / (data.length - 1)) * 400
+                        const toY = (v: number) => 145 - ((v - minP) / range) * 130
+                        const pricePath = data.map((d, i) => `${i === 0 ? 'M' : 'L'}${toX(i)},${toY(d.price)}`).join(' ')
+                        const avgPath = data.map((d, i) => `${i === 0 ? 'M' : 'L'}${toX(i)},${toY(d.avg)}`).join(' ')
+                        return (
+                          <>
+                            {[0, 0.25, 0.5, 0.75, 1].map(f => (
+                              <line key={f} x1="20" y1={15 + f * 130} x2="420" y2={15 + f * 130} stroke="#f3f4f6" strokeWidth="1" />
+                            ))}
+                            {data.map((d, i) => (
+                              <text key={i} x={toX(i)} y="158" textAnchor="middle" className="text-[8px] fill-gray-400">{d.month}</text>
+                            ))}
+                            <path d={avgPath} fill="none" stroke="#a5b4fc" strokeWidth="2" strokeDasharray="4 4" />
+                            <path d={pricePath} fill="none" stroke="#6366f1" strokeWidth="2.5" />
+                            {data.map((d, i) => (
+                              <circle key={i} cx={toX(i)} cy={toY(d.price)} r="3" fill="#6366f1" />
+                            ))}
+                          </>
+                        )
+                      })()}
+                    </svg>
+                  </div>
+                  <div className="flex items-center justify-center gap-6 mt-3">
+                    <div className="flex items-center gap-1.5"><div className="w-4 h-0.5 bg-indigo-500 rounded" /><span className="text-xs text-gray-500">Price</span></div>
+                    <div className="flex items-center gap-1.5"><div className="w-4 h-0.5 bg-indigo-300 rounded" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #a5b4fc 0, #a5b4fc 4px, transparent 4px, transparent 8px)' }} /><span className="text-xs text-gray-500">12-mo avg</span></div>
                   </div>
                 </div>
 
@@ -714,10 +809,15 @@ function App() {
                           <p className="text-3xl font-extrabold">{(() => { const pct = Math.round(((fairnessResult.priceUSD / fairnessResult.globalMedianUSD) - 1) * 100); return pct > 0 ? `${pct}% above` : pct < 0 ? `${Math.abs(pct)}% below` : 'At' })()}</p>
                           <p className="text-sm text-white/70">the global median price</p>
                         </div>
-                        <div className="grid grid-cols-3 gap-3 text-center">
+                        <div className="grid grid-cols-4 gap-2 text-center mb-3">
                           <div className="bg-white/10 rounded-lg p-2"><p className="text-xs text-white/60">Local</p><p className="font-bold text-sm">{selectedCountryData.currencySymbol}{selectedProductData.prices[selectedCountry].localPrice.toLocaleString()}</p></div>
                           <div className="bg-white/10 rounded-lg p-2"><p className="text-xs text-white/60">US</p><p className="font-bold text-sm">{formatUSD(fairnessResult.usPrice)}</p></div>
                           <div className="bg-white/10 rounded-lg p-2"><p className="text-xs text-white/60">Score</p><p className="font-bold text-sm">{Math.round(getScoreForLens(fairnessResult, activeLens))}/100</p></div>
+                          <div className="bg-white/10 rounded-lg p-2"><p className="text-xs text-white/60">Hours</p><p className="font-bold text-sm">{fairnessResult.hoursOfWork.toFixed(1)}h</p></div>
+                        </div>
+                        <div className="flex items-center justify-center gap-3">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${fairnessResult.trendSignal === 'buy' ? 'bg-emerald-400/30 text-emerald-100' : fairnessResult.trendSignal === 'wait' ? 'bg-amber-400/30 text-amber-100' : 'bg-white/15 text-white/70'}`}>{fairnessResult.trendSignal === 'buy' ? 'Buy Now' : fairnessResult.trendSignal === 'wait' ? 'Wait' : 'Neutral'}</span>
+                          <span className="text-xs text-white/50">Confidence: {fairnessResult.confidenceScore}/100</span>
                         </div>
                       </div>
                       <p className="text-xs text-gray-400 text-center">Screenshot this card and share on social media</p>
@@ -877,6 +977,58 @@ function App() {
             <div className="mt-6 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border border-indigo-100 p-5 flex items-start gap-3">
               <Info className="w-5 h-5 text-indigo-500 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-indigo-700">Higher scores indicate better value for consumers. Rankings use PPP-adjusted scores, which account for local purchasing power. A high score doesn't mean "cheap" &mdash; it means prices are fair relative to what locals earn and can buy.</p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'brands' && (
+        <section className="py-12 sm:py-20">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold text-gray-900">Brand Fairness Index</h2>
+              <p className="mt-2 text-gray-600">How fairly do major brands price their products across the globe?</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
+              <div className="flex items-center gap-3">
+                <Search className="w-5 h-5 text-gray-400" />
+                <input type="text" value={brandFilter2} onChange={e => setBrandFilter2(e.target.value)} placeholder="Search brands..." className="flex-1 text-sm outline-none" />
+                {brandFilter2 && <button onClick={() => setBrandFilter2('')} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>}
+              </div>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+              <div className="grid grid-cols-12 gap-2 px-6 py-3 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500">
+                <div className="col-span-1">#</div>
+                <div className="col-span-3">Brand</div>
+                <div className="col-span-2 text-center">Avg Score</div>
+                <div className="col-span-2 text-center">Products</div>
+                <div className="col-span-2 text-center">Best Market</div>
+                <div className="col-span-2 text-center">Worst Market</div>
+              </div>
+              {brandIndex.filter(b => !brandFilter2 || b.brand.toLowerCase().includes(brandFilter2.toLowerCase())).map((entry, i) => {
+                const bestCountry = countries.find(c => c.code === entry.bestCountry)
+                const worstCountry = countries.find(c => c.code === entry.worstCountry)
+                return (
+                  <div key={entry.brand} className={`grid grid-cols-12 gap-2 px-6 py-3 items-center ${i % 2 === 0 ? '' : 'bg-gray-50/50'} border-b border-gray-100 last:border-0 hover:bg-indigo-50/30`}>
+                    <div className="col-span-1 text-sm font-bold text-gray-400">#{i + 1}</div>
+                    <div className="col-span-3">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{entry.brand}</p>
+                      <p className="text-xs text-gray-400">{entry.category}</p>
+                    </div>
+                    <div className="col-span-2 flex justify-center"><ScoreGauge score={entry.avgScore} size="sm" /></div>
+                    <div className="col-span-2 text-center text-sm text-gray-600">{entry.productCount}</div>
+                    <div className="col-span-2 text-center text-xs text-gray-600">{bestCountry ? `${bestCountry.flag} ${bestCountry.name}` : entry.bestCountry}</div>
+                    <div className="col-span-2 text-center text-xs text-gray-600">{worstCountry ? `${worstCountry.flag} ${worstCountry.name}` : entry.worstCountry}</div>
+                  </div>
+                )
+              })}
+              {brandIndex.filter(b => !brandFilter2 || b.brand.toLowerCase().includes(brandFilter2.toLowerCase())).length === 0 && (
+                <div className="px-6 py-10 text-center text-gray-400 text-sm">No brands match your search</div>
+              )}
+            </div>
+            <div className="mt-6 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border border-indigo-100 p-5 flex items-start gap-3">
+              <Info className="w-5 h-5 text-indigo-500 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-indigo-700">The Brand Fairness Index measures how consistently a brand prices its products across different markets, adjusted for purchasing power parity. Higher scores indicate more equitable global pricing. This is not an accusation of unfairness &mdash; regional pricing differences are often driven by taxes, import duties, and distribution costs.</p>
             </div>
           </div>
         </section>
