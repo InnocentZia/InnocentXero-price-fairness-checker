@@ -167,4 +167,142 @@ export async function fetchCompare(productId: string): Promise<{
   return res.json()
 }
 
+export interface PriceHistoryPoint {
+  local_price: number
+  price_usd: number
+  date: string
+}
+
+export interface PriceHistoryResponse {
+  history: PriceHistoryPoint[]
+  trend: 'rising' | 'falling' | 'stable'
+  change_pct: number
+}
+
+export interface AuthUser {
+  id: number
+  email: string
+  display_name: string
+}
+
+export interface SavedProduct {
+  id: number
+  product_id: string
+  country_code: string
+  created_at: string
+  product_name: string
+  category: string
+  brand: string
+  country_name: string
+  flag: string
+}
+
+export interface PriceAlert {
+  id: number
+  product_id: string
+  country_code: string
+  target_price: number
+  alert_type: string
+  triggered: number
+  created_at: string
+  product_name: string
+  brand: string
+  country_name: string
+  flag: string
+}
+
+function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem('fairprice_token')
+  if (!token) return {}
+  return { Authorization: `Bearer ${token}` }
+}
+
+export async function fetchPriceHistory(productId: string, countryCode: string, months = 12): Promise<PriceHistoryResponse> {
+  const res = await fetch(`${API_BASE}/api/price-history/${productId}/${countryCode}?months=${months}`)
+  if (!res.ok) throw new Error('Failed to fetch price history')
+  return res.json()
+}
+
+export async function registerUser(email: string, password: string, displayName?: string): Promise<{ token: string; user: AuthUser }> {
+  const res = await fetch(`${API_BASE}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, display_name: displayName || '' }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Registration failed' }))
+    throw new Error(err.detail || 'Registration failed')
+  }
+  return res.json()
+}
+
+export async function loginUser(email: string, password: string): Promise<{ token: string; user: AuthUser }> {
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Login failed' }))
+    throw new Error(err.detail || 'Login failed')
+  }
+  return res.json()
+}
+
+export async function fetchMe(): Promise<AuthUser> {
+  const res = await fetch(`${API_BASE}/api/auth/me`, { headers: getAuthHeaders() })
+  if (!res.ok) throw new Error('Not authenticated')
+  return res.json()
+}
+
+export async function fetchSavedProducts(): Promise<{ saved_products: SavedProduct[] }> {
+  const res = await fetch(`${API_BASE}/api/saved-products`, { headers: getAuthHeaders() })
+  if (!res.ok) throw new Error('Failed to fetch saved products')
+  return res.json()
+}
+
+export async function saveProduct(productId: string, countryCode: string): Promise<{ message: string }> {
+  const res = await fetch(`${API_BASE}/api/saved-products`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ product_id: productId, country_code: countryCode }),
+  })
+  if (!res.ok) throw new Error('Failed to save product')
+  return res.json()
+}
+
+export async function unsaveProduct(productId: string, countryCode: string): Promise<{ message: string }> {
+  const res = await fetch(`${API_BASE}/api/saved-products/${productId}/${countryCode}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to unsave product')
+  return res.json()
+}
+
+export async function fetchPriceAlerts(): Promise<{ alerts: PriceAlert[] }> {
+  const res = await fetch(`${API_BASE}/api/price-alerts`, { headers: getAuthHeaders() })
+  if (!res.ok) throw new Error('Failed to fetch alerts')
+  return res.json()
+}
+
+export async function createPriceAlert(productId: string, countryCode: string, targetPrice: number, alertType = 'below'): Promise<{ id: number; message: string }> {
+  const res = await fetch(`${API_BASE}/api/price-alerts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ product_id: productId, country_code: countryCode, target_price: targetPrice, alert_type: alertType }),
+  })
+  if (!res.ok) throw new Error('Failed to create alert')
+  return res.json()
+}
+
+export async function deletePriceAlert(alertId: number): Promise<{ message: string }> {
+  const res = await fetch(`${API_BASE}/api/price-alerts/${alertId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to delete alert')
+  return res.json()
+}
+
 export { API_BASE }
