@@ -77,6 +77,56 @@ def init_db():
     conn.executescript("""
         CREATE INDEX IF NOT EXISTS idx_products_subcategory ON products(subcategory);
         CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand);
+
+        CREATE TABLE IF NOT EXISTS price_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id TEXT NOT NULL,
+            country_code TEXT NOT NULL,
+            local_price REAL NOT NULL,
+            price_usd REAL NOT NULL,
+            recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+            FOREIGN KEY (country_code) REFERENCES countries(code)
+        );
+        CREATE INDEX IF NOT EXISTS idx_ph_product ON price_history(product_id);
+        CREATE INDEX IF NOT EXISTS idx_ph_country ON price_history(country_code);
+        CREATE INDEX IF NOT EXISTS idx_ph_recorded ON price_history(recorded_at);
+
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            display_name TEXT NOT NULL DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+        CREATE TABLE IF NOT EXISTS saved_products (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            product_id TEXT NOT NULL,
+            country_code TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+            FOREIGN KEY (country_code) REFERENCES countries(code),
+            UNIQUE(user_id, product_id, country_code)
+        );
+
+        CREATE TABLE IF NOT EXISTS price_alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            product_id TEXT NOT NULL,
+            country_code TEXT NOT NULL,
+            target_price REAL NOT NULL,
+            alert_type TEXT NOT NULL DEFAULT 'below',
+            triggered INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+            FOREIGN KEY (country_code) REFERENCES countries(code)
+        );
+        CREATE INDEX IF NOT EXISTS idx_alerts_user ON price_alerts(user_id);
     """)
     conn.commit()
     conn.close()

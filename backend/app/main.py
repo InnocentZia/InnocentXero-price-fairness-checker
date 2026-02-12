@@ -1,11 +1,24 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Optional
 import math
+import os
+import jwt
+import random
+from datetime import datetime, timedelta, timezone
+from passlib.context import CryptContext
 
 from app.database import get_db, init_db
 from app.seed import seed_database
+
+JWT_SECRET = os.environ.get("JWT_SECRET", "fairprice-secret-key-change-in-prod")
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_HOURS = 72
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer(auto_error=False)
 
 app = FastAPI(title="FairPrice API", version="1.0.0")
 
@@ -49,8 +62,79 @@ class PriceUpdate(BaseModel):
     notes: Optional[str] = None
 
 
+class UserRegister(BaseModel):
+    email: str
+    password: str
+    display_name: str = ''
+
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+
+class SavedProductCreate(BaseModel):
+    product_id: str
+    country_code: str
+
+
+class PriceAlertCreate(BaseModel):
+    product_id: str
+    country_code: str
+    target_price: float
+    alert_type: str = 'below'
+
+
 def row_to_dict(row):
     return dict(row)
+
+
+def create_token(user_id: int, email: str) -> str:
+    payload = {
+        "user_id": user_id,
+        "email": email,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return {"user_id": payload["user_id"], "email": payload["email"]}
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+
+def seed_price_history():
+    conn = get_db()
+    existing = conn.execute("SELECT COUNT(*) FROM price_history").fetchone()[0]
+    if existing > 0:
+        conn.close()
+        return
+    prices = conn.execute("""
+        SELECT p.product_id, p.country_code, p.local_price, c.exchange_rate
+        FROM prices p JOIN countries c ON p.country_code = c.code
+    """).fetchall()
+    now = datetime.now(timezone.utc)
+    for row in prices:
+        base_local = row["local_price"]
+        base_usd = base_local / row["exchange_rate"]
+        for month_offset in range(12, -1, -1):
+            dt = now - timedelta(days=month_offset * 30)
+            variation = random.uniform(-0.08, 0.08)
+            local_price = round(base_local * (1 + variation), 2)
+            price_usd = round(local_price / row["exchange_rate"], 2)
+            conn.execute(
+                "INSERT INTO price_history (product_id, country_code, local_price, price_usd, recorded_at) VALUES (?, ?, ?, ?, ?)",
+                (row["product_id"], row["country_code"], local_price, price_usd, dt.strftime("%Y-%m-%d %H:%M:%S"))
+            )
+    conn.commit()
+    conn.close()
 
 
 def get_all_prices_usd(product_id: str):
@@ -162,6 +246,7 @@ def calculate_fairness(product_id: str, country_code: str):
 def startup():
     init_db()
     seed_database()
+    seed_price_history()
 
 
 @app.get("/healthz")
@@ -443,3 +528,170 @@ async def compare_product(product_id: str):
             })
     comparisons.sort(key=lambda x: x["price_usd"])
     return {"product": row_to_dict(product), "comparisons": comparisons}
+
+
+@app.get("/api/price-history/{product_id}/{country_code}")
+async def get_price_history(product_id: str, country_code: str, months: int = Query(12, ge=1, le=36)):
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT local_price, price_usd, recorded_at
+        FROM price_history
+        WHERE product_id = ? AND country_code = ?
+        ORDER BY recorded_at DESC
+        LIMIT ?
+    """, (product_id, country_code, months + 1)).fetchall()
+    conn.close()
+    if not rows:
+        return {"history": [], "trend": "stable", "change_pct": 0}
+    history = [{"local_price": r["local_price"], "price_usd": r["price_usd"], "date": r["recorded_at"]} for r in reversed(rows)]
+    if len(history) >= 2:
+        first = history[0]["price_usd"]
+        last = history[-1]["price_usd"]
+        change_pct = round(((last - first) / first) * 100, 1) if first else 0
+        trend = "rising" if change_pct > 3 else "falling" if change_pct < -3 else "stable"
+    else:
+        change_pct = 0
+        trend = "stable"
+    return {"history": history, "trend": trend, "change_pct": change_pct}
+
+
+@app.post("/api/auth/register", status_code=201)
+async def register(user: UserRegister):
+    if not user.email or not user.password:
+        raise HTTPException(status_code=400, detail="Email and password required")
+    if len(user.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    conn = get_db()
+    existing = conn.execute("SELECT id FROM users WHERE email = ?", (user.email.lower(),)).fetchone()
+    if existing:
+        conn.close()
+        raise HTTPException(status_code=409, detail="Email already registered")
+    hashed = pwd_context.hash(user.password)
+    display = user.display_name or user.email.split("@")[0]
+    cursor = conn.execute(
+        "INSERT INTO users (email, password_hash, display_name) VALUES (?, ?, ?)",
+        (user.email.lower(), hashed, display)
+    )
+    user_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    token = create_token(user_id, user.email.lower())
+    return {"token": token, "user": {"id": user_id, "email": user.email.lower(), "display_name": display}}
+
+
+@app.post("/api/auth/login")
+async def login(user: UserLogin):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM users WHERE email = ?", (user.email.lower(),)).fetchone()
+    conn.close()
+    if not row or not pwd_context.verify(user.password, row["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    token = create_token(row["id"], row["email"])
+    return {"token": token, "user": {"id": row["id"], "email": row["email"], "display_name": row["display_name"]}}
+
+
+@app.get("/api/auth/me")
+async def get_me(current_user: dict = Depends(get_current_user)):
+    conn = get_db()
+    row = conn.execute("SELECT id, email, display_name, created_at FROM users WHERE id = ?", (current_user["user_id"],)).fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"id": row["id"], "email": row["email"], "display_name": row["display_name"], "created_at": row["created_at"]}
+
+
+@app.get("/api/saved-products")
+async def list_saved_products(current_user: dict = Depends(get_current_user)):
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT sp.id, sp.product_id, sp.country_code, sp.created_at,
+               p.name as product_name, p.category, p.brand,
+               c.name as country_name, c.flag
+        FROM saved_products sp
+        JOIN products p ON sp.product_id = p.id
+        JOIN countries c ON sp.country_code = c.code
+        WHERE sp.user_id = ?
+        ORDER BY sp.created_at DESC
+    """, (current_user["user_id"],)).fetchall()
+    conn.close()
+    return {"saved_products": [row_to_dict(r) for r in rows]}
+
+
+@app.post("/api/saved-products", status_code=201)
+async def save_product(item: SavedProductCreate, current_user: dict = Depends(get_current_user)):
+    conn = get_db()
+    existing = conn.execute(
+        "SELECT id FROM saved_products WHERE user_id = ? AND product_id = ? AND country_code = ?",
+        (current_user["user_id"], item.product_id, item.country_code)
+    ).fetchone()
+    if existing:
+        conn.close()
+        raise HTTPException(status_code=409, detail="Already saved")
+    conn.execute(
+        "INSERT INTO saved_products (user_id, product_id, country_code) VALUES (?, ?, ?)",
+        (current_user["user_id"], item.product_id, item.country_code)
+    )
+    conn.commit()
+    conn.close()
+    return {"message": "Product saved"}
+
+
+@app.delete("/api/saved-products/{product_id}/{country_code}")
+async def unsave_product(product_id: str, country_code: str, current_user: dict = Depends(get_current_user)):
+    conn = get_db()
+    conn.execute(
+        "DELETE FROM saved_products WHERE user_id = ? AND product_id = ? AND country_code = ?",
+        (current_user["user_id"], product_id, country_code)
+    )
+    conn.commit()
+    conn.close()
+    return {"message": "Product removed from saved"}
+
+
+@app.get("/api/price-alerts")
+async def list_price_alerts(current_user: dict = Depends(get_current_user)):
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT pa.id, pa.product_id, pa.country_code, pa.target_price,
+               pa.alert_type, pa.triggered, pa.created_at,
+               p.name as product_name, p.brand,
+               c.name as country_name, c.flag
+        FROM price_alerts pa
+        JOIN products p ON pa.product_id = p.id
+        JOIN countries c ON pa.country_code = c.code
+        WHERE pa.user_id = ?
+        ORDER BY pa.created_at DESC
+    """, (current_user["user_id"],)).fetchall()
+    conn.close()
+    return {"alerts": [row_to_dict(r) for r in rows]}
+
+
+@app.post("/api/price-alerts", status_code=201)
+async def create_price_alert(alert: PriceAlertCreate, current_user: dict = Depends(get_current_user)):
+    if alert.alert_type not in ("below", "above", "any"):
+        raise HTTPException(status_code=400, detail="alert_type must be 'below', 'above', or 'any'")
+    conn = get_db()
+    cursor = conn.execute(
+        "INSERT INTO price_alerts (user_id, product_id, country_code, target_price, alert_type) VALUES (?, ?, ?, ?, ?)",
+        (current_user["user_id"], alert.product_id, alert.country_code, alert.target_price, alert.alert_type)
+    )
+    alert_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return {"id": alert_id, "message": "Alert created"}
+
+
+@app.delete("/api/price-alerts/{alert_id}")
+async def delete_price_alert(alert_id: int, current_user: dict = Depends(get_current_user)):
+    conn = get_db()
+    existing = conn.execute(
+        "SELECT id FROM price_alerts WHERE id = ? AND user_id = ?",
+        (alert_id, current_user["user_id"])
+    ).fetchone()
+    if not existing:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Alert not found")
+    conn.execute("DELETE FROM price_alerts WHERE id = ?", (alert_id,))
+    conn.commit()
+    conn.close()
+    return {"message": "Alert deleted"}
