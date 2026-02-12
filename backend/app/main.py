@@ -8,7 +8,8 @@ import os
 import jwt
 import random
 from datetime import datetime, timedelta, timezone
-from passlib.context import CryptContext
+import hashlib
+import secrets
 
 from app.database import get_db, init_db
 from app.seed import seed_database
@@ -17,8 +18,16 @@ JWT_SECRET = os.environ.get("JWT_SECRET", "fairprice-secret-key-change-in-prod")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 72
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer(auto_error=False)
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    hashed = hashlib.sha256((salt + password).encode()).hexdigest()
+    return f"{salt}${hashed}"
+
+def verify_password(password: str, stored: str) -> bool:
+    salt, hashed = stored.split("$", 1)
+    return hashlib.sha256((salt + password).encode()).hexdigest() == hashed
 
 app = FastAPI(title="FairPrice API", version="1.0.0")
 
@@ -566,7 +575,7 @@ async def register(user: UserRegister):
     if existing:
         conn.close()
         raise HTTPException(status_code=409, detail="Email already registered")
-    hashed = pwd_context.hash(user.password)
+    hashed = hash_password(user.password)
     display = user.display_name or user.email.split("@")[0]
     cursor = conn.execute(
         "INSERT INTO users (email, password_hash, display_name) VALUES (?, ?, ?)",
@@ -584,7 +593,7 @@ async def login(user: UserLogin):
     conn = get_db()
     row = conn.execute("SELECT * FROM users WHERE email = ?", (user.email.lower(),)).fetchone()
     conn.close()
-    if not row or not pwd_context.verify(user.password, row["password_hash"]):
+    if not row or not verify_password(user.password, row["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     token = create_token(row["id"], row["email"])
     return {"token": token, "user": {"id": row["id"], "email": row["email"], "display_name": row["display_name"]}}

@@ -10,7 +10,6 @@ python = "^3.12"
 fastapi = {extras = ["standard"], version = "^0.128.4"}
 aiosqlite = "^0.22.1"
 pyjwt = "^2.11.0"
-passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 
 
 [build-system]
