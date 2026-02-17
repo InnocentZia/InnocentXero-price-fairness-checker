@@ -3,7 +3,7 @@ import {
   Search, DollarSign, Shield, ChevronDown, AlertTriangle, Info, Share2,
   Zap, Eye, HelpCircle, X, TrendingUp,
   Clock, ShieldCheck, ShoppingCart, Leaf, AlertOctagon, Scale,
-  Heart, History, BarChart3, Database,
+  Heart, History, BarChart3, Database, ArrowDown, ArrowUp, Minus, Target,
 } from 'lucide-react'
 import { ScoreGauge } from './ScoreGauge'
 import { FairnessBar } from './FairnessBar'
@@ -33,6 +33,7 @@ export function PriceChecker({ user }: PriceCheckerProps) {
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [activeScenario, setActiveScenario] = useState<string>('')
   const [saved, setSaved] = useState(false)
+  const [userPrice, setUserPrice] = useState('')
   const [productSearch, setProductSearch] = useState('')
   const [countrySearch, setCountrySearch] = useState('')
   const [productDropdownOpen, setProductDropdownOpen] = useState(false)
@@ -289,6 +290,29 @@ export function PriceChecker({ user }: PriceCheckerProps) {
               </div>
             </div>
           </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Your Price (optional)</label>
+            <p className="text-xs text-gray-500 mb-2">Enter the price you were quoted or are paying to see how it compares</p>
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder={selectedCountryData ? `Price in ${selectedCountryData.currency}` : 'Price in local currency'}
+                value={userPrice}
+                onChange={e => setUserPrice(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+              {userPrice && (
+                <button onClick={() => setUserPrice('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-100">
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
+              )}
+            </div>
+          </div>
+
           <button onClick={handleCheck} disabled={!selectedProduct || !selectedCountry} aria-label="Analyze price fairness" className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-lg flex items-center justify-center gap-2 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all">
             <Search className="w-5 h-5" /> Analyze Price Fairness
           </button>
@@ -313,36 +337,124 @@ export function PriceChecker({ user }: PriceCheckerProps) {
                 </div>
               </div>
               {(() => {
-                const pctVsGlobal = Math.round(((fairnessResult.priceUSD / fairnessResult.globalMedianUSD) - 1) * 100)
-                const pctVsUS = Math.round(((fairnessResult.priceUSD / fairnessResult.usPrice) - 1) * 100)
+                const refLocalPrice = selectedProductData.prices[selectedCountry].localPrice
+                const userPriceNum = userPrice ? parseFloat(userPrice) : 0
+                const hasUserPrice = userPrice && userPriceNum > 0
+                const userPriceUSD = hasUserPrice ? userPriceNum / selectedCountryData.exchangeRate : fairnessResult.priceUSD
+                const pctVsGlobal = Math.round(((userPriceUSD / fairnessResult.globalMedianUSD) - 1) * 100)
+                const pctVsUS = Math.round(((userPriceUSD / fairnessResult.usPrice) - 1) * 100)
+                const pctVsRef = hasUserPrice ? Math.round(((userPriceNum / refLocalPrice) - 1) * 100) : 0
                 const countriesWithProduct = countries.filter(c => selectedProductData.prices[c.code])
                 const cheaperCount = countriesWithProduct.filter(c => {
                   const p = selectedProductData.prices[c.code]
                   if (!p) return false
                   const usd = p.localPrice / c.exchangeRate
-                  return usd < fairnessResult.priceUSD
+                  return usd < userPriceUSD
                 }).length
                 const percentile = Math.round((cheaperCount / countriesWithProduct.length) * 100)
                 const isAboveGlobal = pctVsGlobal > 5
                 const isBelowGlobal = pctVsGlobal < -5
+                const cheapestCountry = countriesWithProduct.reduce((best, c) => {
+                  const usd = selectedProductData.prices[c.code].localPrice / c.exchangeRate
+                  const bestUsd = selectedProductData.prices[best.code].localPrice / best.exchangeRate
+                  return usd < bestUsd ? c : best
+                }, countriesWithProduct[0])
+                const expensiveCountry = countriesWithProduct.reduce((worst, c) => {
+                  const usd = selectedProductData.prices[c.code].localPrice / c.exchangeRate
+                  const worstUsd = selectedProductData.prices[worst.code].localPrice / worst.exchangeRate
+                  return usd > worstUsd ? c : worst
+                }, countriesWithProduct[0])
                 return (
-                  <div className={`p-5 rounded-xl mb-6 ${isAboveGlobal ? 'bg-red-50 border border-red-200' : isBelowGlobal ? 'bg-emerald-50 border border-emerald-200' : 'bg-blue-50 border border-blue-200'}`}>
-                    <p className={`text-lg sm:text-xl font-bold ${isAboveGlobal ? 'text-red-800' : isBelowGlobal ? 'text-emerald-800' : 'text-blue-800'}`}>
-                      {isAboveGlobal
-                        ? `This price is ${Math.abs(pctVsGlobal)}% higher than the global median`
-                        : isBelowGlobal
-                        ? `This price is ${Math.abs(pctVsGlobal)}% lower than the global median`
-                        : 'This price is close to the global median'}
-                    </p>
-                    <div className="flex flex-wrap gap-x-6 gap-y-1 mt-2">
-                      <p className="text-sm text-gray-600">
-                        {pctVsUS > 0 ? `${pctVsUS}% more` : pctVsUS < 0 ? `${Math.abs(pctVsUS)}% less` : 'Same'} than the US price
+                  <>
+                    {hasUserPrice && (
+                      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 mb-6 text-white">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Target className="w-5 h-5" />
+                          <h4 className="font-bold text-lg">Your Price Comparison</h4>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                          <div className="bg-white/15 rounded-xl p-3 text-center">
+                            <p className="text-xs text-white/70 mb-1">You Pay</p>
+                            <p className="text-xl font-bold">{selectedCountryData.currencySymbol}{userPriceNum.toLocaleString()}</p>
+                            <p className="text-xs text-white/60">{formatUSD(userPriceUSD)}</p>
+                          </div>
+                          <div className="bg-white/15 rounded-xl p-3 text-center">
+                            <p className="text-xs text-white/70 mb-1">Reference Price</p>
+                            <p className="text-xl font-bold">{selectedCountryData.currencySymbol}{refLocalPrice.toLocaleString()}</p>
+                            <p className="text-xs text-white/60">{formatUSD(fairnessResult.priceUSD)}</p>
+                          </div>
+                          <div className="bg-white/15 rounded-xl p-3 text-center">
+                            <p className="text-xs text-white/70 mb-1">Global Median</p>
+                            <p className="text-xl font-bold">{formatUSD(fairnessResult.globalMedianUSD)}</p>
+                          </div>
+                          <div className="bg-white/15 rounded-xl p-3 text-center">
+                            <p className="text-xs text-white/70 mb-1">vs Reference</p>
+                            <p className={`text-xl font-bold flex items-center justify-center gap-1 ${pctVsRef > 5 ? 'text-red-300' : pctVsRef < -5 ? 'text-emerald-300' : 'text-white'}`}>
+                              {pctVsRef > 0 ? <ArrowUp className="w-4 h-4" /> : pctVsRef < 0 ? <ArrowDown className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
+                              {Math.abs(pctVsRef)}%
+                            </p>
+                          </div>
+                        </div>
+                        <div className={`rounded-xl p-4 ${pctVsRef > 15 ? 'bg-red-500/30' : pctVsRef > 5 ? 'bg-amber-500/30' : pctVsRef < -5 ? 'bg-emerald-500/30' : 'bg-white/10'}`}>
+                          <p className="font-bold text-lg">
+                            {pctVsRef > 15
+                              ? `You're overpaying by ${pctVsRef}%`
+                              : pctVsRef > 5
+                              ? `You're paying ${pctVsRef}% above the reference price`
+                              : pctVsRef < -15
+                              ? `Great deal! You're paying ${Math.abs(pctVsRef)}% less than reference`
+                              : pctVsRef < -5
+                              ? `Good price! ${Math.abs(pctVsRef)}% below reference`
+                              : 'Your price is in line with the reference price'}
+                          </p>
+                          <p className="text-sm text-white/80 mt-1">
+                            {pctVsRef > 15
+                              ? `Consider negotiating or looking for alternatives. The typical price is ${selectedCountryData.currencySymbol}${refLocalPrice.toLocaleString()}.`
+                              : pctVsRef > 5
+                              ? `Slightly above average. You might save ${selectedCountryData.currencySymbol}${(userPriceNum - refLocalPrice).toLocaleString()} by shopping around.`
+                              : pctVsRef < -5
+                              ? `You're getting a better deal than most people in ${selectedCountryData.name}.`
+                              : `This is a fair market price for ${selectedCountryData.name}.`}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 mt-3">
+                          <div className="bg-white/10 rounded-lg p-2.5 text-center">
+                            <p className="text-xs text-white/60">Cheapest in</p>
+                            <p className="text-sm font-semibold">{cheapestCountry.flag} {cheapestCountry.name}</p>
+                            <p className="text-xs text-white/60">{formatUSD(selectedProductData.prices[cheapestCountry.code].localPrice / cheapestCountry.exchangeRate)}</p>
+                          </div>
+                          <div className="bg-white/10 rounded-lg p-2.5 text-center">
+                            <p className="text-xs text-white/60">Most expensive in</p>
+                            <p className="text-sm font-semibold">{expensiveCountry.flag} {expensiveCountry.name}</p>
+                            <p className="text-xs text-white/60">{formatUSD(selectedProductData.prices[expensiveCountry.code].localPrice / expensiveCountry.exchangeRate)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div className={`p-5 rounded-xl mb-6 ${isAboveGlobal ? 'bg-red-50 border border-red-200' : isBelowGlobal ? 'bg-emerald-50 border border-emerald-200' : 'bg-blue-50 border border-blue-200'}`}>
+                      <p className={`text-lg sm:text-xl font-bold ${isAboveGlobal ? 'text-red-800' : isBelowGlobal ? 'text-emerald-800' : 'text-blue-800'}`}>
+                        {hasUserPrice
+                          ? (isAboveGlobal
+                            ? `Your price is ${Math.abs(pctVsGlobal)}% higher than the global median`
+                            : isBelowGlobal
+                            ? `Your price is ${Math.abs(pctVsGlobal)}% lower than the global median`
+                            : 'Your price is close to the global median')
+                          : (isAboveGlobal
+                            ? `This price is ${Math.abs(pctVsGlobal)}% higher than the global median`
+                            : isBelowGlobal
+                            ? `This price is ${Math.abs(pctVsGlobal)}% lower than the global median`
+                            : 'This price is close to the global median')}
                       </p>
-                      <p className="text-sm text-gray-600">
-                        You pay more than {percentile}% of the world
-                      </p>
+                      <div className="flex flex-wrap gap-x-6 gap-y-1 mt-2">
+                        <p className="text-sm text-gray-600">
+                          {pctVsUS > 0 ? `${pctVsUS}% more` : pctVsUS < 0 ? `${Math.abs(pctVsUS)}% less` : 'Same'} than the US price
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {hasUserPrice ? 'Your price is' : 'You pay'} more than {percentile}% of the world
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )
               })()}
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
