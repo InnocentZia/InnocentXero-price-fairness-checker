@@ -3649,6 +3649,17 @@ export function pppAdjustedPrice(localPrice: number, country: Country): number {
   return usd * country.pppFactor
 }
 
+function removeIQROutliers(values: number[]): number[] {
+  if (values.length < 4) return values
+  const sorted = [...values].sort((a, b) => a - b)
+  const q1 = sorted[Math.floor(sorted.length * 0.25)]
+  const q3 = sorted[Math.floor(sorted.length * 0.75)]
+  const iqr = q3 - q1
+  const lower = q1 - 1.5 * iqr
+  const upper = q3 + 1.5 * iqr
+  return sorted.filter(v => v >= lower && v <= upper)
+}
+
 export function calculateFairness(product: Product, countryCode: string): FairnessResult | null {
   const country = getCountryByCode(countryCode)
   const priceEntry = product.prices[countryCode]
@@ -3659,9 +3670,10 @@ export function calculateFairness(product: Product, countryCode: string): Fairne
   const priceUSD = priceToUSD(priceEntry.localPrice, country)
   const usPrice = priceToUSD(usPriceEntry.localPrice, usCountry)
 
-  const allPricesUSD = countries
+  const allPricesUSDRaw = countries
     .filter(c => product.prices[c.code])
     .map(c => priceToUSD(product.prices[c.code].localPrice, c))
+  const allPricesUSD = removeIQROutliers(allPricesUSDRaw)
   const globalMedianUSD = allPricesUSD.sort((a, b) => a - b)[Math.floor(allPricesUSD.length / 2)]
 
   const pppPrice = pppAdjustedPrice(priceEntry.localPrice, country)

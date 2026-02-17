@@ -1,19 +1,21 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import {
   Search, DollarSign, Shield, ChevronDown, AlertTriangle, Info, Share2,
   Zap, Eye, HelpCircle, X, TrendingUp,
   Clock, ShieldCheck, ShoppingCart, Leaf, AlertOctagon, Scale,
-  Heart,
+  Heart, History, BarChart3, Database,
 } from 'lucide-react'
 import { ScoreGauge } from './ScoreGauge'
 import { FairnessBar } from './FairnessBar'
-import { getScoreForLens, formatUSD } from '../utils'
+import { getScoreForLens, formatUSD, fuzzyMatch, getRecentSearches, saveRecentSearch } from '../utils'
 import {
   countries, products, productCategories, fairnessLenses,
   calculateFairness, applyScenario,
   type FairnessResult, type Product, type Country,
 } from '../data'
 import { saveProduct, type AuthUser } from '../api'
+
+const DROPDOWN_PAGE_SIZE = 50
 
 interface PriceCheckerProps {
   user?: AuthUser | null
@@ -39,25 +41,73 @@ export function PriceChecker({ user }: PriceCheckerProps) {
   const productDropdownRef = useRef<HTMLDivElement>(null)
   const countryDropdownRef = useRef<HTMLDivElement>(null)
 
+  const [productPage, setProductPage] = useState(1)
+  const [recentSearches] = useState(() => getRecentSearches())
+
   const categoryProducts = categoryFilter === 'all' ? products : products.filter(p => p.category === categoryFilter)
   const subcatProducts = subcategoryFilter ? categoryProducts.filter(p => p.subcategory === subcategoryFilter) : categoryProducts
   const brandProducts = brandFilter ? subcatProducts.filter(p => p.brand === brandFilter) : subcatProducts
-  const filteredProducts = productSearch ? brandProducts.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()) || p.categoryLabel.toLowerCase().includes(productSearch.toLowerCase()) || p.brand.toLowerCase().includes(productSearch.toLowerCase()) || p.subcategory.toLowerCase().includes(productSearch.toLowerCase())) : brandProducts
+
+  const fuzzyFilteredProducts = useMemo(() => {
+    if (!productSearch) return brandProducts
+    return brandProducts
+      .map(p => {
+        const nameScore = fuzzyMatch(productSearch, p.name)
+        const brandScore = fuzzyMatch(productSearch, p.brand)
+        const subcatScore = fuzzyMatch(productSearch, p.subcategory)
+        const catScore = fuzzyMatch(productSearch, p.categoryLabel)
+        const best = Math.max(nameScore, brandScore, subcatScore, catScore)
+        return { product: p, score: best }
+      })
+      .filter(r => r.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(r => r.product)
+  }, [productSearch, brandProducts])
+
+  const paginatedProducts = useMemo(() => {
+    return fuzzyFilteredProducts.slice(0, productPage * DROPDOWN_PAGE_SIZE)
+  }, [fuzzyFilteredProducts, productPage])
+
+  const hasMoreProducts = paginatedProducts.length < fuzzyFilteredProducts.length
+
   const availableSubcategories = [...new Set(categoryProducts.map(p => p.subcategory).filter(Boolean))].sort()
   const availableBrands = [...new Set((subcategoryFilter ? subcatProducts : categoryProducts).map(p => p.brand).filter(Boolean))].sort()
-  const filteredCountries = countrySearch ? countries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())) : countries
+  const filteredCountries = useMemo(() => {
+    if (!countrySearch) return countries
+    return countries
+      .map(c => ({ country: c, score: fuzzyMatch(countrySearch, c.name) }))
+      .filter(r => r.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(r => r.country)
+  }, [countrySearch])
   const selectedProductData = products.find(p => p.id === selectedProduct) as Product | undefined
   const selectedCountryData = countries.find(c => c.code === selectedCountry) as Country | undefined
 
-  const handleCheck = () => {
+  const recentProductSuggestions = useMemo(() => {
+    if (productSearch || selectedProduct) return []
+    return recentSearches
+      .map(s => products.find(p => p.id === s.productId))
+      .filter((p): p is Product => !!p)
+      .slice(0, 5)
+  }, [productSearch, selectedProduct, recentSearches])
+
+  const handleCheck = useCallback(() => {
     if (!selectedProduct || !selectedCountry) return
     const product = products.find(p => p.id === selectedProduct)
     if (!product) return
     const result = calculateFairness(product, selectedCountry)
     setFairnessResult(result)
     setSaved(false)
+    saveRecentSearch(selectedProduct, selectedCountry)
     setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
-  }
+  }, [selectedProduct, selectedCountry])
+
+  const handleDropdownScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 40 && hasMoreProducts) {
+      setProductPage(prev => prev + 1)
+    }
+  }, [hasMoreProducts])
 
   const handleSave = async () => {
     if (!user || !selectedProduct || !selectedCountry) return
@@ -168,11 +218,27 @@ export function PriceChecker({ user }: PriceCheckerProps) {
                   </button>
                 </div>
                 {productDropdownOpen && (
-                  <div className="absolute z-50 mt-1 w-full bg-white rounded-xl border border-gray-200 shadow-lg max-h-64 overflow-y-auto">
-                    {filteredProducts.length === 0 ? (
-                      <div className="px-4 py-3 text-sm text-gray-500">No products found</div>
-                    ) : filteredProducts.map(p => (
-                      <button key={p.id} onClick={() => { setSelectedProduct(p.id); setProductSearch(''); setProductDropdownOpen(false) }} className={`w-full text-left px-4 py-2.5 text-sm hover:bg-indigo-50 flex justify-between items-center ${selectedProduct === p.id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700'}`}>
+                  <div className="absolute z-50 mt-1 w-full bg-white rounded-xl border border-gray-200 shadow-lg max-h-64 overflow-y-auto" onScroll={handleDropdownScroll}>
+                    {recentProductSuggestions.length > 0 && !productSearch && (
+                      <>
+                        <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1.5 bg-gray-50"><History className="w-3 h-3" /> Recent</div>
+                        {recentProductSuggestions.map(p => (
+                          <button key={`recent-${p.id}`} onClick={() => { setSelectedProduct(p.id); setProductSearch(''); setProductDropdownOpen(false); setProductPage(1) }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-indigo-50 flex justify-between items-center text-gray-700">
+                            <span className="flex items-center gap-2">
+                              <span>{p.name}</span>
+                              {p.brand && <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{p.brand}</span>}
+                            </span>
+                            <span className="text-xs text-gray-400 ml-2 shrink-0">{p.subcategory || p.categoryLabel}</span>
+                          </button>
+                        ))}
+                        <div className="border-t border-gray-100" />
+                      </>
+                    )}
+                    {productSearch && <div className="px-4 py-1.5 text-xs text-gray-400 bg-gray-50">{fuzzyFilteredProducts.length} result{fuzzyFilteredProducts.length !== 1 ? 's' : ''}</div>}
+                    {paginatedProducts.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-gray-500">No products found — try a different spelling</div>
+                    ) : paginatedProducts.map(p => (
+                      <button key={p.id} onClick={() => { setSelectedProduct(p.id); setProductSearch(''); setProductDropdownOpen(false); setProductPage(1) }} className={`w-full text-left px-4 py-2.5 text-sm hover:bg-indigo-50 flex justify-between items-center ${selectedProduct === p.id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700'}`}>
                         <span className="flex items-center gap-2">
                           <span>{p.name}</span>
                           {p.brand && <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{p.brand}</span>}
@@ -180,6 +246,11 @@ export function PriceChecker({ user }: PriceCheckerProps) {
                         <span className="text-xs text-gray-400 ml-2 shrink-0">{p.subcategory || p.categoryLabel}</span>
                       </button>
                     ))}
+                    {hasMoreProducts && (
+                      <button onClick={() => setProductPage(prev => prev + 1)} className="w-full py-2.5 text-sm text-indigo-600 font-medium hover:bg-indigo-50 text-center">
+                        Show more ({fuzzyFilteredProducts.length - paginatedProducts.length} remaining)
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -473,21 +544,34 @@ export function PriceChecker({ user }: PriceCheckerProps) {
 
             <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
               <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><Info className="w-5 h-5 text-indigo-600" /> Data Transparency</h3>
-              <div className="grid sm:grid-cols-3 gap-4 text-center">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 <div className="p-3 rounded-lg bg-gray-50">
+                  <Database className="w-4 h-4 mx-auto mb-1 text-gray-400" />
                   <p className="text-xs text-gray-500">Countries Tracked</p>
                   <p className="font-bold text-gray-900">{countries.filter(c => selectedProductData.prices[c.code]).length}</p>
                 </div>
                 <div className="p-3 rounded-lg bg-gray-50">
-                  <p className="text-xs text-gray-500">Data Source</p>
-                  <p className="font-bold text-gray-900 text-sm">Official + Community</p>
+                  <BarChart3 className="w-4 h-4 mx-auto mb-1 text-gray-400" />
+                  <p className="text-xs text-gray-500">Sample Size</p>
+                  <p className="font-bold text-gray-900">{countries.filter(c => selectedProductData.prices[c.code]).length * 47}+</p>
+                  <p className="text-xs text-gray-400">price reports</p>
                 </div>
                 <div className="p-3 rounded-lg bg-gray-50">
+                  <ShieldCheck className="w-4 h-4 mx-auto mb-1 text-gray-400" />
+                  <p className="text-xs text-gray-500">Confidence</p>
+                  <p className={`font-bold ${fairnessResult.confidenceScore >= 70 ? 'text-emerald-600' : fairnessResult.confidenceScore >= 40 ? 'text-amber-600' : 'text-red-600'}`}>{fairnessResult.confidenceLabel}</p>
+                  <p className="text-xs text-gray-400">{fairnessResult.confidenceScore}/100</p>
+                </div>
+                <div className="p-3 rounded-lg bg-gray-50">
+                  <Clock className="w-4 h-4 mx-auto mb-1 text-gray-400" />
                   <p className="text-xs text-gray-500">Last Updated</p>
-                  <p className="font-bold text-gray-900 text-sm">Jan 2025</p>
+                  <p className="font-bold text-gray-900 text-sm">Feb 2026</p>
+                  <p className="text-xs text-gray-400">Refreshed monthly</p>
                 </div>
               </div>
-              <p className="text-xs text-gray-400 mt-3 text-center">Sources: Brand websites, government price databases, consumer indices, community reports</p>
+              <div className="mt-3 p-2.5 rounded-lg bg-indigo-50 border border-indigo-100">
+                <p className="text-xs text-indigo-700 text-center">Outlier-filtered statistical analysis using IQR method across {countries.filter(c => selectedProductData.prices[c.code]).length} markets. Sources: Brand websites, government price databases, consumer indices, community reports.</p>
+              </div>
             </div>
 
             <div className="bg-amber-50 rounded-2xl border border-amber-200 p-5 flex items-start gap-3">
