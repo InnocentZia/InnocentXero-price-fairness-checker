@@ -29,7 +29,7 @@ export function PricingPage({ onSubscribe }: PricingPageProps) {
       icon: Shield,
       color: 'gray',
       features: [
-        { label: '5 searches per day', included: true },
+        { label: '25 searches per day', included: true },
         { label: 'Basic fairness verdict', included: true },
         { label: 'Price distribution chart', included: true },
         { label: '30 countries', included: true },
@@ -95,7 +95,7 @@ export function PricingPage({ onSubscribe }: PricingPageProps) {
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">Choose Your Plan</h2>
           <p className="mt-3 text-lg text-gray-600 max-w-2xl mx-auto">
-            Get deeper insights into global pricing. Free users get {5 - searchesUsed} searches remaining today.
+            Get deeper insights into global pricing. Free users get {25 - searchesUsed} searches remaining today.
           </p>
         </div>
 
@@ -188,7 +188,7 @@ export function PricingPage({ onSubscribe }: PricingPageProps) {
               </thead>
               <tbody>
                 {[
-                  { feature: 'Daily searches', free: '5', premium: 'Unlimited', business: 'Unlimited' },
+                  { feature: 'Daily searches', free: '25', premium: 'Unlimited', business: 'Unlimited' },
                   { feature: 'Countries', free: '30', premium: '30', business: '30' },
                   { feature: 'Products', free: '2,250+', premium: '2,250+', business: '2,250+' },
                   { feature: 'Fairness lenses', free: '4', premium: '4', business: '4' },

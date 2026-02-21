@@ -66,7 +66,7 @@ export function saveRecentSearch(productId: string, countryCode: string): void {
 const SEARCH_COUNT_KEY = 'fairprice_search_count'
 const SEARCH_DATE_KEY = 'fairprice_search_date'
 const SUBSCRIPTION_KEY = 'fairprice_subscription'
-const FREE_DAILY_LIMIT = 5
+const FREE_DAILY_LIMIT = 25
 
 export function getSubscriptionTier(): 'free' | 'premium' | 'business' {
   try {

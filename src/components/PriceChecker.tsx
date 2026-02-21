@@ -328,12 +328,12 @@ export function PriceChecker({ user, setActiveTab }: PriceCheckerProps) {
             <Search className="w-5 h-5" /> Analyze Price Fairness
           </button>
           {!isPremium() && (
-            <p className="text-xs text-gray-500 text-center mt-2">{5 - getDailySearchCount()} of 5 free searches remaining today</p>
+            <p className="text-xs text-gray-500 text-center mt-2">{25 - getDailySearchCount()} of 25 free searches remaining today</p>
           )}
           {searchLimitHit && (
             <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 text-center">
               <p className="text-sm font-semibold text-gray-900 mb-1">Daily search limit reached</p>
-              <p className="text-xs text-gray-600 mb-3">Free accounts get 5 searches per day. Upgrade for unlimited access.</p>
+              <p className="text-xs text-gray-600 mb-3">Free accounts get 25 searches per day. Upgrade for unlimited access.</p>
               <button onClick={() => setActiveTab?.('pricing')} className="px-6 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold hover:shadow-lg transition-all">View Plans</button>
             </div>
           )}
