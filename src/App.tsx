@@ -3,7 +3,7 @@ import './App.css'
 import {
   Shield, Globe, BarChart3, Search, Users, Store,
   Gamepad2, Trophy, BookOpen, Home, X, MapPin, Building2,
-  Database, WifiOff, User, LogOut, LayoutDashboard,
+  Database, WifiOff, User, LogOut, LayoutDashboard, CreditCard,
 } from 'lucide-react'
 import { fetchStats, fetchMe, type AuthUser } from './api'
 import { productCategories } from './data'
@@ -21,6 +21,7 @@ import { ProviderDirectory } from './components/ProviderDirectory'
 import { Methodology } from './components/Methodology'
 import { Dashboard } from './components/Dashboard'
 import { AuthModal } from './components/AuthModal'
+import { PricingPage } from './components/PricingPage'
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabId>('home')
@@ -62,6 +63,7 @@ function App() {
     { id: 'providers', label: 'Providers', icon: Store },
     { id: 'community', label: 'Community', icon: Users },
     { id: 'methodology', label: 'How We Score', icon: BookOpen },
+    { id: 'pricing', label: 'Pricing', icon: CreditCard },
   ]
 
   return (
@@ -139,7 +141,7 @@ function App() {
 
       <main id="main-content" role="main">
         {activeTab === 'home' && <HomePage setActiveTab={setActiveTab} />}
-        {activeTab === 'checker' && <PriceChecker user={user} />}
+        {activeTab === 'checker' && <PriceChecker user={user} setActiveTab={setActiveTab} />}
         {activeTab === 'compare' && <GlobalCompare />}
         {activeTab === 'vsworld' && <VsWorld />}
         {activeTab === 'quiz' && <Quiz />}
@@ -149,6 +151,7 @@ function App() {
         {activeTab === 'community' && <Community apiConnected={apiConnected} />}
         {activeTab === 'methodology' && <Methodology />}
         {activeTab === 'dashboard' && user && <Dashboard user={user} />}
+        {activeTab === 'pricing' && <PricingPage onSubscribe={() => setActiveTab('checker')} />}
       </main>
 
       <footer role="contentinfo" aria-label="Site footer" className="bg-gray-900 text-gray-400 py-16">

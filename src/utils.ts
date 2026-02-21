@@ -63,6 +63,72 @@ export function saveRecentSearch(productId: string, countryCode: string): void {
   } catch {}
 }
 
+const SEARCH_COUNT_KEY = 'fairprice_search_count'
+const SEARCH_DATE_KEY = 'fairprice_search_date'
+const SUBSCRIPTION_KEY = 'fairprice_subscription'
+const FREE_DAILY_LIMIT = 5
+
+export function getSubscriptionTier(): 'free' | 'premium' | 'business' {
+  try {
+    const raw = localStorage.getItem(SUBSCRIPTION_KEY)
+    if (!raw) return 'free'
+    const sub = JSON.parse(raw)
+    if (sub.expiresAt && new Date(sub.expiresAt) < new Date()) return 'free'
+    return sub.tier || 'free'
+  } catch {
+    return 'free'
+  }
+}
+
+export function setSubscriptionTier(tier: 'free' | 'premium' | 'business'): void {
+  if (tier === 'free') {
+    localStorage.removeItem(SUBSCRIPTION_KEY)
+    return
+  }
+  const now = new Date()
+  const expires = new Date(now)
+  expires.setMonth(expires.getMonth() + 1)
+  localStorage.setItem(SUBSCRIPTION_KEY, JSON.stringify({
+    tier,
+    startDate: now.toISOString(),
+    expiresAt: expires.toISOString(),
+  }))
+}
+
+export function getDailySearchCount(): number {
+  const today = new Date().toISOString().slice(0, 10)
+  const savedDate = localStorage.getItem(SEARCH_DATE_KEY)
+  if (savedDate !== today) return 0
+  return parseInt(localStorage.getItem(SEARCH_COUNT_KEY) || '0', 10)
+}
+
+export function incrementSearchCount(): void {
+  const today = new Date().toISOString().slice(0, 10)
+  const savedDate = localStorage.getItem(SEARCH_DATE_KEY)
+  if (savedDate !== today) {
+    localStorage.setItem(SEARCH_DATE_KEY, today)
+    localStorage.setItem(SEARCH_COUNT_KEY, '1')
+  } else {
+    const count = parseInt(localStorage.getItem(SEARCH_COUNT_KEY) || '0', 10)
+    localStorage.setItem(SEARCH_COUNT_KEY, String(count + 1))
+  }
+}
+
+export function canSearch(): boolean {
+  const tier = getSubscriptionTier()
+  if (tier !== 'free') return true
+  return getDailySearchCount() < FREE_DAILY_LIMIT
+}
+
+export function isPremium(): boolean {
+  const tier = getSubscriptionTier()
+  return tier === 'premium' || tier === 'business'
+}
+
+export function isBusiness(): boolean {
+  return getSubscriptionTier() === 'business'
+}
+
 export function removeIQROutliers(values: number[]): number[] {
   if (values.length < 4) return values
   const sorted = [...values].sort((a, b) => a - b)
