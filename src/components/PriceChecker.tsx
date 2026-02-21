@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { ScoreGauge } from './ScoreGauge'
 import { FairnessBar } from './FairnessBar'
-import { getScoreForLens, formatUSD, fuzzyMatch, getRecentSearches, saveRecentSearch, canSearch, incrementSearchCount, isPremium, getDailySearchCount } from '../utils'
+import { getScoreForLens, formatUSD, fuzzyMatch, getRecentSearches, saveRecentSearch } from '../utils'
 import {
   countries, products, productCategories, fairnessLenses,
   calculateFairness, applyScenario, getNearbyCountries, predictPrice,
@@ -16,16 +16,14 @@ import {
   type FairnessResult, type Product, type Country,
 } from '../data'
 import { saveProduct, type AuthUser } from '../api'
-import type { TabId } from '../types'
 
 const DROPDOWN_PAGE_SIZE = 50
 
 interface PriceCheckerProps {
   user?: AuthUser | null
-  setActiveTab?: (tab: TabId) => void
 }
 
-export function PriceChecker({ user, setActiveTab }: PriceCheckerProps) {
+export function PriceChecker({ user }: PriceCheckerProps) {
   const [selectedProduct, setSelectedProduct] = useState('')
   const [selectedCountry, setSelectedCountry] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -48,7 +46,6 @@ export function PriceChecker({ user, setActiveTab }: PriceCheckerProps) {
 
   const [productPage, setProductPage] = useState(1)
   const [recentSearches] = useState(() => getRecentSearches())
-  const [searchLimitHit, setSearchLimitHit] = useState(false)
 
   const categoryProducts = categoryFilter === 'all' ? products : products.filter(p => p.category === categoryFilter)
   const subcatProducts = subcategoryFilter ? categoryProducts.filter(p => p.subcategory === subcategoryFilter) : categoryProducts
@@ -99,14 +96,8 @@ export function PriceChecker({ user, setActiveTab }: PriceCheckerProps) {
 
   const handleCheck = useCallback(() => {
     if (!selectedProduct || !selectedCountry) return
-    if (!canSearch()) {
-      setSearchLimitHit(true)
-      return
-    }
-    setSearchLimitHit(false)
     const product = products.find(p => p.id === selectedProduct)
     if (!product) return
-    incrementSearchCount()
     const result = calculateFairness(product, selectedCountry)
     setFairnessResult(result)
     setSaved(false)
@@ -327,16 +318,6 @@ export function PriceChecker({ user, setActiveTab }: PriceCheckerProps) {
           <button onClick={handleCheck} disabled={!selectedProduct || !selectedCountry} aria-label="Analyze price fairness" className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-lg flex items-center justify-center gap-2 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all">
             <Search className="w-5 h-5" /> Analyze Price Fairness
           </button>
-          {!isPremium() && (
-            <p className="text-xs text-gray-500 text-center mt-2">{25 - getDailySearchCount()} of 25 free searches remaining today</p>
-          )}
-          {searchLimitHit && (
-            <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 text-center">
-              <p className="text-sm font-semibold text-gray-900 mb-1">Daily search limit reached</p>
-              <p className="text-xs text-gray-600 mb-3">Free accounts get 25 searches per day. Upgrade for unlimited access.</p>
-              <button onClick={() => setActiveTab?.('pricing')} className="px-6 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold hover:shadow-lg transition-all">View Plans</button>
-            </div>
-          )}
         </div>
 
         {fairnessResult && selectedProductData && selectedCountryData && (
@@ -758,22 +739,6 @@ export function PriceChecker({ user, setActiveTab }: PriceCheckerProps) {
               const pred3 = predictPrice(fairnessResult.trendData, 3)
               const pred6 = predictPrice(fairnessResult.trendData, 6)
               if (!ci.mean) return null
-              if (!isPremium()) return (
-                <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center p-6">
-                    <Zap className="w-8 h-8 text-indigo-500 mb-2" />
-                    <p className="text-lg font-bold text-gray-900 mb-1">Statistical Insights & Predictions</p>
-                    <p className="text-sm text-gray-600 mb-3 text-center">Confidence intervals, volatility analysis, and price predictions are available on Premium and Business plans.</p>
-                    <button onClick={() => setActiveTab?.('pricing')} className="px-6 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold hover:shadow-lg transition-all">Upgrade Now</button>
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2 opacity-40"><Activity className="w-5 h-5 text-indigo-600" /> Statistical Insights</h3>
-                  <div className="grid sm:grid-cols-2 gap-4 mb-4 opacity-40">
-                    <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 h-24" />
-                    <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 h-24" />
-                  </div>
-                  <div className="p-4 rounded-xl bg-violet-50 border border-violet-100 h-20 opacity-40" />
-                </div>
-              )
               return (
                 <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
                   <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><Activity className="w-5 h-5 text-indigo-600" /> Statistical Insights</h3>
