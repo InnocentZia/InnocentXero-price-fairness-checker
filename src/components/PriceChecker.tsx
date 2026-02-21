@@ -2,16 +2,17 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import {
   Search, DollarSign, Shield, ChevronDown, AlertTriangle, Info, Share2,
   Zap, Eye, HelpCircle, X, TrendingUp,
-  Clock, ShieldCheck, ShoppingCart, Leaf, AlertOctagon, Scale,
+  Clock,  ShieldCheck, ShoppingCart, Leaf, AlertOctagon, Scale,
   Heart, History, BarChart3, Database, ArrowDown, ArrowUp, Minus, Target,
-  Sun, Snowflake, CalendarDays,
+  Sun, Snowflake, CalendarDays, MapPin, Activity,
 } from 'lucide-react'
 import { ScoreGauge } from './ScoreGauge'
 import { FairnessBar } from './FairnessBar'
 import { getScoreForLens, formatUSD, fuzzyMatch, getRecentSearches, saveRecentSearch } from '../utils'
 import {
   countries, products, productCategories, fairnessLenses,
-  calculateFairness, applyScenario,
+  calculateFairness, applyScenario, getNearbyCountries, predictPrice,
+  getVolatility, getConfidenceInterval,
   type FairnessResult, type Product, type Country,
 } from '../data'
 import { saveProduct, type AuthUser } from '../api'
@@ -731,6 +732,89 @@ export function PriceChecker({ user }: PriceCheckerProps) {
                 <p className="text-xs text-indigo-700 text-center">Outlier-filtered statistical analysis using IQR method across {countries.filter(c => selectedProductData.prices[c.code]).length} markets. Sources: Brand websites, government price databases, consumer indices, community reports.</p>
               </div>
             </div>
+
+            {(() => {
+              const ci = getConfidenceInterval(selectedProductData, selectedCountry)
+              const vol = getVolatility(fairnessResult.trendData)
+              const pred3 = predictPrice(fairnessResult.trendData, 3)
+              const pred6 = predictPrice(fairnessResult.trendData, 6)
+              if (!ci.mean) return null
+              return (
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><Activity className="w-5 h-5 text-indigo-600" /> Statistical Insights</h3>
+                  <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                    <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">95% Confidence Interval</p>
+                      <div className="flex items-center gap-3 mb-2">
+                        <p className="text-lg font-bold text-gray-900">{formatUSD(ci.lower)} &ndash; {formatUSD(ci.upper)}</p>
+                      </div>
+                      <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="absolute h-full bg-indigo-200 rounded-full" style={{ left: `${Math.max(0, ((ci.lower - ci.lower * 0.8) / (ci.upper * 1.2 - ci.lower * 0.8)) * 100)}%`, width: `${Math.min(100, ((ci.upper - ci.lower) / (ci.upper * 1.2 - ci.lower * 0.8)) * 100)}%` }} />
+                        <div className="absolute h-full w-0.5 bg-indigo-600" style={{ left: `${Math.min(100, Math.max(0, ((ci.mean - ci.lower * 0.8) / (ci.upper * 1.2 - ci.lower * 0.8)) * 100))}%` }} />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1.5">Your price: {formatUSD(ci.mean)} &middot; Margin: &plusmn;{formatUSD(ci.margin)}</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Price Volatility</p>
+                      <div className="flex items-center gap-3">
+                        <p className={`text-lg font-bold ${vol.label === 'High' ? 'text-red-600' : vol.label === 'Moderate' ? 'text-amber-600' : 'text-emerald-600'}`}>{vol.label}</p>
+                        <span className="text-sm text-gray-500">{vol.volatility}% CV</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">{vol.label === 'High' ? 'Prices fluctuate significantly — wait for dips or set a price alert' : vol.label === 'Moderate' ? 'Some price variation — timing your purchase may save money' : 'Prices are stable — unlikely to change much'}</p>
+                    </div>
+                  </div>
+                  {pred3.predicted > 0 && (
+                    <div className="p-4 rounded-xl bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-100">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Price Prediction (Linear Trend)</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-gray-500">3 Months</p>
+                          <p className="text-lg font-bold text-gray-900">{formatUSD(pred3.predicted)}</p>
+                          <p className="text-xs text-gray-400">{formatUSD(pred3.lower)} &ndash; {formatUSD(pred3.upper)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">6 Months</p>
+                          <p className="text-lg font-bold text-gray-900">{formatUSD(pred6.predicted)}</p>
+                          <p className="text-xs text-gray-400">{formatUSD(pred6.lower)} &ndash; {formatUSD(pred6.upper)}</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-2">Based on 12-month linear regression. Ranges show 95% prediction intervals. Not financial advice.</p>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
+            {(() => {
+              const nearby = getNearbyCountries(selectedCountry, selectedProduct)
+              if (nearby.length === 0) return null
+              return (
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
+                  <h3 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2"><MapPin className="w-5 h-5 text-indigo-600" /> Nearby &amp; Similar Markets</h3>
+                  <p className="text-sm text-gray-500 mb-4">Countries in the same region or income group for quick comparison</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {nearby.map(c => {
+                      const entry = selectedProductData.prices[c.code]
+                      if (!entry) return null
+                      const usd = entry.localPrice / c.exchangeRate
+                      const diff = Math.round(((usd / fairnessResult.priceUSD) - 1) * 100)
+                      return (
+                        <button key={c.code} onClick={() => { setSelectedCountry(c.code); handleCheck() }} className="p-3 rounded-xl bg-gray-50 border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all text-left">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-lg">{c.flag}</span>
+                            <span className="text-sm font-semibold text-gray-900">{c.name}</span>
+                          </div>
+                          <p className="text-sm font-bold text-gray-700">{formatUSD(usd)}</p>
+                          <p className={`text-xs font-medium ${diff > 0 ? 'text-red-500' : diff < 0 ? 'text-emerald-500' : 'text-gray-400'}`}>
+                            {diff > 0 ? `+${diff}%` : diff < 0 ? `${diff}%` : 'Same'} vs {selectedCountryData.name}
+                          </p>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })()}
 
             <div className="bg-amber-50 rounded-2xl border border-amber-200 p-5 flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 import {
-  Shield, Globe, BarChart3, Search, Users,
+  Shield, Globe, BarChart3, Search, Users, Store,
   Gamepad2, Trophy, BookOpen, Home, X, MapPin, Building2,
   Database, WifiOff, User, LogOut, LayoutDashboard,
 } from 'lucide-react'
@@ -17,6 +17,7 @@ import { Quiz } from './components/Quiz'
 import { Leaderboard } from './components/Leaderboard'
 import { BrandIndex } from './components/BrandIndex'
 import { Community } from './components/Community'
+import { ProviderDirectory } from './components/ProviderDirectory'
 import { Methodology } from './components/Methodology'
 import { Dashboard } from './components/Dashboard'
 import { AuthModal } from './components/AuthModal'
@@ -58,6 +59,7 @@ function App() {
     { id: 'quiz', label: 'Quiz', icon: Gamepad2 },
     { id: 'leaderboard', label: 'Leaderboard', icon: Trophy },
     { id: 'brands', label: 'Brand Index', icon: Building2 },
+    { id: 'providers', label: 'Providers', icon: Store },
     { id: 'community', label: 'Community', icon: Users },
     { id: 'methodology', label: 'How We Score', icon: BookOpen },
   ]
@@ -143,6 +145,7 @@ function App() {
         {activeTab === 'quiz' && <Quiz />}
         {activeTab === 'leaderboard' && <Leaderboard />}
         {activeTab === 'brands' && <BrandIndex />}
+        {activeTab === 'providers' && <ProviderDirectory />}
         {activeTab === 'community' && <Community apiConnected={apiConnected} />}
         {activeTab === 'methodology' && <Methodology />}
         {activeTab === 'dashboard' && user && <Dashboard user={user} />}

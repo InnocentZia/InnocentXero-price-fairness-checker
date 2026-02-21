@@ -3993,6 +3993,102 @@ export function getBrandFairnessIndex(): BrandFairnessEntry[] {
   return entries.sort((a, b) => b.avgScore - a.avgScore)
 }
 
+export function getNearbyCountries(countryCode: string, productId: string): Country[] {
+  const country = getCountryByCode(countryCode)
+  if (!country) return []
+  const product = getProductById(productId)
+  const sameRegion = countries.filter(c =>
+    c.code !== countryCode &&
+    c.region === country.region &&
+    (!product || product.prices[c.code])
+  )
+  const sameIncome = countries.filter(c =>
+    c.code !== countryCode &&
+    c.incomeGroup === country.incomeGroup &&
+    c.region !== country.region &&
+    (!product || product.prices[c.code])
+  )
+  return [...sameRegion, ...sameIncome].slice(0, 6)
+}
+
+export function predictPrice(trendData: TrendPoint[], monthsAhead: number): { predicted: number; lower: number; upper: number } {
+  if (trendData.length < 3) return { predicted: 0, lower: 0, upper: 0 }
+  const n = trendData.length
+  const xMean = (n - 1) / 2
+  const yMean = trendData.reduce((s, d) => s + d.price, 0) / n
+  let num = 0, den = 0
+  for (let i = 0; i < n; i++) {
+    num += (i - xMean) * (trendData[i].price - yMean)
+    den += (i - xMean) * (i - xMean)
+  }
+  const slope = den !== 0 ? num / den : 0
+  const intercept = yMean - slope * xMean
+  const predicted = intercept + slope * (n - 1 + monthsAhead)
+  const residuals = trendData.map((d, i) => d.price - (intercept + slope * i))
+  const stdErr = Math.sqrt(residuals.reduce((s, r) => s + r * r, 0) / (n - 2))
+  const margin = stdErr * 1.96
+  return {
+    predicted: Math.max(0, Math.round(predicted * 100) / 100),
+    lower: Math.max(0, Math.round((predicted - margin) * 100) / 100),
+    upper: Math.round((predicted + margin) * 100) / 100,
+  }
+}
+
+export function getVolatility(trendData: TrendPoint[]): { volatility: number; label: string } {
+  if (trendData.length < 3) return { volatility: 0, label: 'Unknown' }
+  const mean = trendData.reduce((s, d) => s + d.price, 0) / trendData.length
+  const variance = trendData.reduce((s, d) => s + (d.price - mean) ** 2, 0) / trendData.length
+  const cv = (Math.sqrt(variance) / mean) * 100
+  const label = cv > 8 ? 'High' : cv > 4 ? 'Moderate' : 'Low'
+  return { volatility: Math.round(cv * 10) / 10, label }
+}
+
+export function getConfidenceInterval(product: Product, countryCode: string): { mean: number; lower: number; upper: number; margin: number } {
+  const allPricesUSD = countries
+    .filter(c => product.prices[c.code])
+    .map(c => priceToUSD(product.prices[c.code].localPrice, c))
+  const n = allPricesUSD.length
+  if (n < 3) return { mean: 0, lower: 0, upper: 0, margin: 0 }
+  const mean = allPricesUSD.reduce((a, b) => a + b, 0) / n
+  const stdDev = Math.sqrt(allPricesUSD.reduce((s, p) => s + (p - mean) ** 2, 0) / (n - 1))
+  const margin = (stdDev / Math.sqrt(n)) * 1.96
+  const country = getCountryByCode(countryCode)
+  const localUSD = country ? priceToUSD(product.prices[countryCode].localPrice, country) : mean
+  return {
+    mean: Math.round(localUSD * 100) / 100,
+    lower: Math.round((mean - margin) * 100) / 100,
+    upper: Math.round((mean + margin) * 100) / 100,
+    margin: Math.round(margin * 100) / 100,
+  }
+}
+
+export interface ContributorBadge {
+  id: string
+  label: string
+  icon: string
+  requirement: string
+  threshold: number
+}
+
+export const contributorBadges: ContributorBadge[] = [
+  { id: 'first-report', label: 'First Report', icon: 'star', requirement: 'Submit your first price report', threshold: 1 },
+  { id: 'explorer', label: 'Explorer', icon: 'globe', requirement: 'Submit 5 price reports', threshold: 5 },
+  { id: 'contributor', label: 'Contributor', icon: 'award', requirement: 'Submit 25 price reports', threshold: 25 },
+  { id: 'expert', label: 'Expert', icon: 'shield', requirement: 'Submit 100 price reports', threshold: 100 },
+  { id: 'legend', label: 'Legend', icon: 'crown', requirement: 'Submit 500 price reports', threshold: 500 },
+  { id: 'multi-country', label: 'Globe Trotter', icon: 'map', requirement: 'Report from 5+ countries', threshold: 5 },
+  { id: 'accuracy', label: 'Sharpshooter', icon: 'target', requirement: 'Earn 90%+ accuracy rating', threshold: 90 },
+  { id: 'streak', label: 'Consistent', icon: 'flame', requirement: 'Report prices 7 days in a row', threshold: 7 },
+]
+
+export function getContributorLevel(submissions: number): { level: number; title: string; nextLevel: number; progress: number } {
+  if (submissions >= 500) return { level: 5, title: 'Legend', nextLevel: 500, progress: 100 }
+  if (submissions >= 100) return { level: 4, title: 'Expert', nextLevel: 500, progress: Math.round((submissions / 500) * 100) }
+  if (submissions >= 25) return { level: 3, title: 'Contributor', nextLevel: 100, progress: Math.round((submissions / 100) * 100) }
+  if (submissions >= 5) return { level: 2, title: 'Explorer', nextLevel: 25, progress: Math.round((submissions / 25) * 100) }
+  return { level: 1, title: 'Newcomer', nextLevel: 5, progress: Math.round((submissions / 5) * 100) }
+}
+
 export function applyScenario(result: FairnessResult, scenario: string, country: Country): { adjustedScore: number; explanation: string } {
   const baseScore = result.pppScore
   switch (scenario) {
