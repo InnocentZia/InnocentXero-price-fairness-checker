@@ -4,6 +4,7 @@ import {
   Zap, Eye, HelpCircle, X, TrendingUp,
   Clock, ShieldCheck, ShoppingCart, Leaf, AlertOctagon, Scale,
   Heart, History, BarChart3, Database, ArrowDown, ArrowUp, Minus, Target,
+  Sun, Snowflake, CalendarDays,
 } from 'lucide-react'
 import { ScoreGauge } from './ScoreGauge'
 import { FairnessBar } from './FairnessBar'
@@ -457,7 +458,7 @@ export function PriceChecker({ user }: PriceCheckerProps) {
                   </>
                 )
               })()}
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4">
                 <div className="p-4 rounded-xl bg-gray-50 text-center">
                   <p className="text-xs text-gray-500 mb-1">Your Price (USD)</p>
                   <p className="text-xl font-bold text-gray-900">{formatUSD(fairnessResult.priceUSD)}</p>
@@ -474,7 +475,7 @@ export function PriceChecker({ user }: PriceCheckerProps) {
                   <p className="text-xs text-gray-400 mt-1">Across {countries.filter(c => selectedProductData.prices[c.code]).length} countries</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
                 <div className="p-4 rounded-xl bg-gray-50 text-center">
                   <p className="text-xs text-gray-500 mb-1">% of Median Income</p>
                   <p className="text-xl font-bold text-gray-900">{fairnessResult.incomePercentage.toFixed(2)}%</p>
@@ -522,7 +523,7 @@ export function PriceChecker({ user }: PriceCheckerProps) {
             <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8">
               <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><Eye className="w-5 h-5 text-indigo-600" /> Scenario Analysis</h3>
               <p className="text-sm text-gray-500 mb-4">See how fairness changes under different assumptions</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
                 {[
                   { id: 'my-income', label: 'Fair for my income?', icon: DollarSign, color: 'indigo' },
                   { id: 'no-brand', label: 'Without brand premium?', icon: ShoppingCart, color: 'purple' },
@@ -545,8 +546,8 @@ export function PriceChecker({ user }: PriceCheckerProps) {
                 </div>
               </div>
               <p className="text-sm text-gray-500 mb-4">{fairnessResult.trendReason}</p>
-              <div className="relative h-48 w-full">
-                <svg viewBox="0 0 440 160" className="w-full h-full" preserveAspectRatio="none">
+              <div className="relative h-40 sm:h-48 w-full overflow-x-auto">
+                <svg viewBox="0 0 440 160" className="w-full h-full min-w-80" preserveAspectRatio="none">
                   {(() => {
                     const data = fairnessResult.trendData
                     if (data.length === 0) return null
@@ -575,10 +576,55 @@ export function PriceChecker({ user }: PriceCheckerProps) {
                   })()}
                 </svg>
               </div>
-              <div className="flex items-center justify-center gap-6 mt-3">
+              <div className="flex items-center justify-center gap-4 sm:gap-6 mt-3 flex-wrap">
                 <div className="flex items-center gap-1.5"><div className="w-4 h-0.5 bg-indigo-500 rounded" /><span className="text-xs text-gray-500">Price</span></div>
                 <div className="flex items-center gap-1.5"><div className="w-4 h-0.5 bg-indigo-300 rounded" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #a5b4fc 0, #a5b4fc 4px, transparent 4px, transparent 8px)' }} /><span className="text-xs text-gray-500">12-mo avg</span></div>
               </div>
+              {(() => {
+                const data = fairnessResult.trendData
+                if (data.length < 6) return null
+                const prices = data.map(d => d.price)
+                const minIdx = prices.indexOf(Math.min(...prices))
+                const maxIdx = prices.indexOf(Math.max(...prices))
+                const cheapestMonth = data[minIdx]
+                const expensiveMonth = data[maxIdx]
+                const q1Months = data.slice(0, 3)
+                const q2Months = data.slice(3, 6)
+                const q3Months = data.slice(6, 9)
+                const q4Months = data.slice(9, 12)
+                const qAvg = (arr: typeof data) => arr.reduce((s, d) => s + d.price, 0) / arr.length
+                const quarters = [
+                  { label: 'Spring', avg: qAvg(q1Months), icon: Sun },
+                  { label: 'Summer', avg: qAvg(q2Months), icon: Sun },
+                  { label: 'Fall', avg: qAvg(q3Months), icon: CalendarDays },
+                  { label: 'Winter', avg: qAvg(q4Months), icon: Snowflake },
+                ]
+                const cheapestQ = quarters.reduce((best, q) => q.avg < best.avg ? q : best)
+                const seasonalRange = Math.round(((Math.max(...quarters.map(q => q.avg)) / Math.min(...quarters.map(q => q.avg))) - 1) * 100)
+                return (
+                  <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100">
+                    <div className="flex items-center gap-2 mb-3">
+                      <CalendarDays className="w-4 h-4 text-blue-600" />
+                      <h4 className="font-semibold text-gray-900 text-sm">Seasonal Price Analysis</h4>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                      {quarters.map(q => (
+                        <div key={q.label} className={`p-2 rounded-lg text-center ${q === cheapestQ ? 'bg-emerald-100 border border-emerald-200' : 'bg-white/70'}`}>
+                          <q.icon className={`w-3.5 h-3.5 mx-auto mb-1 ${q === cheapestQ ? 'text-emerald-600' : 'text-gray-400'}`} />
+                          <p className="text-xs text-gray-500">{q.label}</p>
+                          <p className={`text-sm font-bold ${q === cheapestQ ? 'text-emerald-700' : 'text-gray-700'}`}>{formatUSD(q.avg)}</p>
+                          {q === cheapestQ && <p className="text-xs text-emerald-600 font-medium">Best time</p>}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2 text-xs text-gray-600">
+                      <span className="flex items-center gap-1"><ArrowDown className="w-3 h-3 text-emerald-500" /> Cheapest: {cheapestMonth.month} ({formatUSD(cheapestMonth.price)})</span>
+                      <span className="flex items-center gap-1"><ArrowUp className="w-3 h-3 text-red-500" /> Highest: {expensiveMonth.month} ({formatUSD(expensiveMonth.price)})</span>
+                      <span className="text-gray-400">Seasonal range: {seasonalRange}%</span>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
             {fairnessResult.factors.length > 0 && (
@@ -736,7 +782,7 @@ export function PriceChecker({ user }: PriceCheckerProps) {
                       <p className="text-3xl font-extrabold">{(() => { const pct = Math.round(((fairnessResult.priceUSD / fairnessResult.globalMedianUSD) - 1) * 100); return pct > 0 ? `${pct}% above` : pct < 0 ? `${Math.abs(pct)}% below` : 'At' })()}</p>
                       <p className="text-sm text-white/70">the global median price</p>
                     </div>
-                    <div className="grid grid-cols-4 gap-2 text-center mb-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center mb-3">
                       <div className="bg-white/10 rounded-lg p-2"><p className="text-xs text-white/60">Local</p><p className="font-bold text-sm">{selectedCountryData.currencySymbol}{selectedProductData.prices[selectedCountry].localPrice.toLocaleString()}</p></div>
                       <div className="bg-white/10 rounded-lg p-2"><p className="text-xs text-white/60">US</p><p className="font-bold text-sm">{formatUSD(fairnessResult.usPrice)}</p></div>
                       <div className="bg-white/10 rounded-lg p-2"><p className="text-xs text-white/60">Score</p><p className="font-bold text-sm">{Math.round(getScoreForLens(fairnessResult, activeLens))}/100</p></div>
