@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import './App.css'
 import {
   Shield, Globe, BarChart3, Search, Users, Store,
@@ -11,16 +11,21 @@ import type { TabId, ApiStats } from './types'
 
 import { HomePage } from './components/HomePage'
 import { PriceChecker } from './components/PriceChecker'
-import { GlobalCompare } from './components/GlobalCompare'
-import { VsWorld } from './components/VsWorld'
-import { Quiz } from './components/Quiz'
-import { Leaderboard } from './components/Leaderboard'
-import { BrandIndex } from './components/BrandIndex'
-import { Community } from './components/Community'
-import { ProviderDirectory } from './components/ProviderDirectory'
-import { Methodology } from './components/Methodology'
-import { Dashboard } from './components/Dashboard'
 import { AuthModal } from './components/AuthModal'
+
+const GlobalCompare = lazy(() => import('./components/GlobalCompare').then(m => ({ default: m.GlobalCompare })))
+const VsWorld = lazy(() => import('./components/VsWorld').then(m => ({ default: m.VsWorld })))
+const Quiz = lazy(() => import('./components/Quiz').then(m => ({ default: m.Quiz })))
+const Leaderboard = lazy(() => import('./components/Leaderboard').then(m => ({ default: m.Leaderboard })))
+const BrandIndex = lazy(() => import('./components/BrandIndex').then(m => ({ default: m.BrandIndex })))
+const Community = lazy(() => import('./components/Community').then(m => ({ default: m.Community })))
+const ProviderDirectory = lazy(() => import('./components/ProviderDirectory').then(m => ({ default: m.ProviderDirectory })))
+const Methodology = lazy(() => import('./components/Methodology').then(m => ({ default: m.Methodology })))
+const Dashboard = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })))
+
+function LazyFallback() {
+  return <div className="flex items-center justify-center py-32"><div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" /></div>
+}
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabId>('home')
@@ -140,15 +145,17 @@ function App() {
       <main id="main-content" role="main">
         {activeTab === 'home' && <HomePage setActiveTab={setActiveTab} />}
         {activeTab === 'checker' && <PriceChecker user={user} />}
-        {activeTab === 'compare' && <GlobalCompare />}
-        {activeTab === 'vsworld' && <VsWorld />}
-        {activeTab === 'quiz' && <Quiz />}
-        {activeTab === 'leaderboard' && <Leaderboard />}
-        {activeTab === 'brands' && <BrandIndex />}
-        {activeTab === 'providers' && <ProviderDirectory />}
-        {activeTab === 'community' && <Community apiConnected={apiConnected} />}
-        {activeTab === 'methodology' && <Methodology />}
-        {activeTab === 'dashboard' && user && <Dashboard user={user} />}
+        <Suspense fallback={<LazyFallback />}>
+          {activeTab === 'compare' && <GlobalCompare />}
+          {activeTab === 'vsworld' && <VsWorld />}
+          {activeTab === 'quiz' && <Quiz />}
+          {activeTab === 'leaderboard' && <Leaderboard />}
+          {activeTab === 'brands' && <BrandIndex />}
+          {activeTab === 'providers' && <ProviderDirectory />}
+          {activeTab === 'community' && <Community apiConnected={apiConnected} />}
+          {activeTab === 'methodology' && <Methodology />}
+          {activeTab === 'dashboard' && user && <Dashboard user={user} />}
+        </Suspense>
       </main>
 
       <footer role="contentinfo" aria-label="Site footer" className="bg-gray-900 text-gray-400 py-16">
